@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { company_name, contact_name, email, message } = await req.json();
+    const { company_name, contact_name, email, message } = await request.json();
 
     // バリデーション
     if (!company_name || !contact_name || !email || !message) {

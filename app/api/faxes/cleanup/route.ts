@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // 3ヶ月以上経過した履歴データを削除（利用枚数カウントは削除しない）
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
     // 3ヶ月前の日付を計算
     const threeMonthsAgo = new Date();

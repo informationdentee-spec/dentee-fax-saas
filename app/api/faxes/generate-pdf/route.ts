@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import puppeteer from "puppeteer";
 import { prisma } from "@/lib/prisma";
 
 // 名刺を含む完全なFAX用紙PDFを生成
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // 内見依頼書の場合、必須項目をチェック
     if (data.purpose === "visit_request" || (!data.purpose && data.property_name)) {

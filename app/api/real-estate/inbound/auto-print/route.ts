@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { PrintService } from "@/lib/shared/print-service";
 import { prisma } from "@/lib/prisma";
 
@@ -6,9 +6,9 @@ import { prisma } from "@/lib/prisma";
  * 自動印刷実行
  * POST /api/real-estate/inbound/auto-print
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // バリデーション
     if (!data.received_fax_id) {

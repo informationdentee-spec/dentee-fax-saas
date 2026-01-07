@@ -1,18 +1,18 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 /**
  * 振り分けルール更新
  * PUT /api/real-estate/inbound/routing-rules/:id
  */
 export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const ruleId = Number(id);
-    const data = await req.json();
+    const data = await request.json();
 
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -54,11 +54,11 @@ export async function PUT(
  * DELETE /api/real-estate/inbound/routing-rules/:id
  */
 export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const ruleId = Number(id);
 
     await prisma.autoRoutingRule.delete({

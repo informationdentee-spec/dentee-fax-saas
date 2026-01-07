@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getAuditLogs } from "@/lib/shared/audit-logger";
 
 /**
  * 送信ログ・証跡取得
  * GET /api/real-estate/outbound/audit-logs
  */
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const faxId = searchParams.get("fax_id");
     const userId = searchParams.get("user_id");
     const action = searchParams.get("action");

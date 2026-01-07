@@ -1,16 +1,17 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const id = Number(params.id);
+    const { id } = await context.params;
+    const idNumber = Number(id);
 
-    if (isNaN(id)) {
+    if (isNaN(idNumber)) {
       return NextResponse.json({ error: "Invalid fax ID" }, { status: 400 });
     }
 
     const updatedFax = await prisma.receivedFax.update({
-      where: { id },
+      where: { id: idNumber },
       data: { is_read: true }
     });
 

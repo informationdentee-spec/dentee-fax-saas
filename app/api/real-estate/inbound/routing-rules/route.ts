@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 /**
  * 振り分けルール一覧取得
  * GET /api/real-estate/inbound/routing-rules
  */
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const isActive = searchParams.get("is_active");
 
     const where: any = {};
@@ -40,9 +40,9 @@ export async function GET(req: Request) {
  * 振り分けルール作成
  * POST /api/real-estate/inbound/routing-rules
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // バリデーション
     if (!data.name || !data.conditions) {

@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import puppeteer from "puppeteer";
 
 // 名刺テンプレートから画像を生成するAPI
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { template, variables } = await req.json();
+    const { template, variables } = await request.json();
 
     if (!template) {
       return NextResponse.json({ error: "Template is required" }, { status: 400 });
@@ -51,9 +51,9 @@ export async function POST(req: Request) {
 }
 
 // 名刺テンプレートを画像（Base64）に変換するAPI
-export async function PUT(req: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    const { html } = await req.json();
+    const { html } = await request.json();
 
     if (!html) {
       return NextResponse.json({ error: "HTML is required" }, { status: 400 });

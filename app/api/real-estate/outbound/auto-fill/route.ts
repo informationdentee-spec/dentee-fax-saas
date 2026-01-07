@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 /**
  * 自動差し込み実行
@@ -7,9 +7,9 @@ import { NextResponse } from "next/server";
  * 
  * 物件情報・顧客情報を自動的に差し込む
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // バリデーション
     if (!data.template_id && !data.template_content) {

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { processOCR } from "@/lib/shared/ocr-unified";
 
 /**
@@ -7,9 +7,9 @@ import { processOCR } from "@/lib/shared/ocr-unified";
  * 
  * FAX送信前にプレビューを生成する（PDF、画像など）
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // バリデーション
     if (!data.content && !data.template_id) {

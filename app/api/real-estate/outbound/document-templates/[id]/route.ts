@@ -1,16 +1,16 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 /**
  * 書類テンプレート取得
  * GET /api/real-estate/outbound/document-templates/:id
  */
 export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const templateId = Number(id);
 
     const template = await prisma.realEstateDocumentTemplate.findUnique({
@@ -42,13 +42,13 @@ export async function GET(
  * PUT /api/real-estate/outbound/document-templates/:id
  */
 export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const templateId = Number(id);
-    const data = await req.json();
+    const data = await request.json();
 
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -93,11 +93,11 @@ export async function PUT(
  * DELETE /api/real-estate/outbound/document-templates/:id
  */
 export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const templateId = Number(id);
 
     await prisma.realEstateDocumentTemplate.delete({

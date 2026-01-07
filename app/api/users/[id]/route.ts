@@ -1,18 +1,18 @@
 import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
 // 担当者情報の更新（名刺画像の登録など）
 export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id: idString } = await params;
+  const { id: idString } = await context.params;
   const id = Number(idString);
 
   if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   try {
-    const body = await req.json();
+    const body = await request.json();
 
     // 更新処理
     const updatedUser = await prisma.user.update({

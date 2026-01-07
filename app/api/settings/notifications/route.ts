@@ -1,9 +1,9 @@
 import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
-export async function PUT(req: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await request.json();
 
     // 設定レコードが存在しない場合は作成し、存在すれば更新
     // (通常はSeedで作成しますが、念のためupsert的な動きをさせます)

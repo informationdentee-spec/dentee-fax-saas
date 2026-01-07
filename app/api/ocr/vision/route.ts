@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 
 /**
  * Google Cloud Vision APIを使用したOCR処理
  * 環境変数 GOOGLE_CLOUD_VISION_API_KEY が必要です
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const formData = await req.formData();
+    const formData = await request.formData();
     const file = formData.get('image') as File;
     
     if (!file) {

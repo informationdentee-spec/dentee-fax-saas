@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // 名刺テンプレートを取得
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const settings = await prisma.settings.findFirst();
     return NextResponse.json({ template: settings?.business_card_template || null });
@@ -13,9 +13,9 @@ export async function GET() {
 }
 
 // 名刺テンプレートを保存
-export async function PUT(req: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    const { template, image } = await req.json();
+    const { template, image } = await request.json();
 
     // Settingsテーブルが存在しない場合は作成、存在する場合は更新
     let settings = await prisma.settings.findFirst();

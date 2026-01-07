@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma"; // [4] Prismaクライアント
 // import { generatePdf } from "@/services/pdfService"; // [5] 既存のPDF生成サービス
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await request.json();
     const { 
       fax_number, 
       company_name, 

@@ -1,14 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { sendFaxNotification } from "@/utils/notifications";
 
-type Props = {
-  params: Promise<{ id: string }>;
-};
-
 // GET: 特定のFAXレコードを取得
-export async function GET(req: Request, { params }: Props) {
-  const { id: rawId } = await params;
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await context.params;
   const id = Number(rawId);
   
   try {
@@ -32,10 +28,10 @@ export async function GET(req: Request, { params }: Props) {
   }
 }
 
-export async function PUT(req: Request, { params }: Props) {
-  const { id: rawId } = await params;
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await context.params;
   const id = Number(rawId);
-  const data = await req.json();
+  const data = await request.json();
 
   try {
     // 更新データの構築
@@ -77,8 +73,8 @@ export async function PUT(req: Request, { params }: Props) {
 }
 
 // DELETEは変更なし
-export async function DELETE(req: Request, { params }: Props) {
-  const { id: rawId } = await params;
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: rawId } = await context.params;
   const id = Number(rawId);
   try {
     await prisma.fax.delete({ where: { id } });

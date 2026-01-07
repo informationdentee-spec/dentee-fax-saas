@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // ネクストアクション提示API（推測した文脈に応じて次にやるべき行動を提示）
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const id = Number(params.id);
+    const { id } = await context.params;
+    const idNumber = Number(id);
 
     const receivedFax = await prisma.receivedFax.findUnique({
-      where: { id }
+      where: { id: idNumber }
     });
 
     if (!receivedFax) {
@@ -47,7 +48,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     // データベースに保存
     await prisma.receivedFax.update({
-      where: { id },
+      where: { id: idNumber },
       data: { next_actions: JSON.stringify(actions) }
     });
 

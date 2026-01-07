@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // システム設定・通知設定の更新（Settingsテーブルは1レコードのみの前提）
-export async function PUT(req: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
     
     // 最初の1件を取得してIDを特定（またはID:1固定）
     const first = await prisma.settings.findFirst();

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const settings = await prisma.settings.findFirst();
     return NextResponse.json({ obi_image: settings?.obi_image || null });
@@ -11,9 +11,9 @@ export async function GET() {
   }
 }
 
-export async function PUT(req: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await request.json();
     
     // Settingsテーブルが存在しない場合は作成、存在する場合は更新
     let settings = await prisma.settings.findFirst();

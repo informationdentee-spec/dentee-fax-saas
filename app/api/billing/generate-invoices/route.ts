@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
 /**
  * usage_recordsをyear_month単位で集計し、invoicesテーブルに保存
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { year_month } = await req.json();
+    const { year_month } = await request.json();
 
     if (!year_month || !/^\d{4}-\d{2}$/.test(year_month)) {
       return NextResponse.json(

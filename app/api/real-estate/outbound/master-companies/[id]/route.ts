@@ -1,18 +1,18 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 /**
  * 管理会社マスタ更新
  * PUT /api/real-estate/outbound/master-companies/:id
  */
 export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const masterCompanyId = Number(id);
-    const data = await req.json();
+    const data = await request.json();
 
     const updateData: any = {};
     if (data.preferred_fax_number !== undefined)

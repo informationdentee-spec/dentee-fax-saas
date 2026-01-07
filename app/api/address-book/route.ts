@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // アドレス帳一覧取得
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const tag = searchParams.get("tag");
     const favorite = searchParams.get("favorite");
@@ -44,9 +44,9 @@ export async function GET(req: Request) {
 }
 
 // アドレス帳追加
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
     
     // Prisma Clientのデバッグ情報
     console.log("Prisma Client keys:", Object.keys(prisma));

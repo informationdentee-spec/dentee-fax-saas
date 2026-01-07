@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 /**
  * アーカイブ検索
  * GET /api/real-estate/inbound/archive
  */
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const documentType = searchParams.get("document_type");
     const tags = searchParams.get("tags"); // カンマ区切り

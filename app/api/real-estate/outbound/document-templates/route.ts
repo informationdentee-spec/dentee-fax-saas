@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 /**
  * 書類テンプレート一覧取得
  * GET /api/real-estate/outbound/document-templates
  */
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const isActive = searchParams.get("is_active");
 
@@ -44,9 +44,9 @@ export async function GET(req: Request) {
  * 書類テンプレート作成
  * POST /api/real-estate/outbound/document-templates
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // バリデーション
     if (!data.name || !data.category || !data.template_type || !data.content) {

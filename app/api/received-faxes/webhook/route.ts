@@ -1,18 +1,18 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { processOCR } from "@/lib/shared/ocr-unified";
 import { logFaxReceived } from "@/lib/shared/audit-logger";
 import { saveReceiveUsage } from "@/lib/usage/saveUsage";
 import { getSupabaseUserId } from "@/lib/supabase/getUserId";
 
 // FAXプロバイダーからのWebhook受信エンドポイント
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // Webhookの署名検証（セキュリティ）
     const webhookSecret = process.env.FAX_WEBHOOK_SECRET;
-    const signature = req.headers.get("x-fax-signature");
+    const signature = request.headers.get("x-fax-signature");
     if (webhookSecret && signature) {
       // TODO: 署名検証ロジックを実装（HMAC等）
       // const isValid = verifySignature(data, signature, webhookSecret);
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
     // Supabaseのusage_recordsにも保存（user_idが取得できる場合のみ）
     try {
-      const supabaseUserId = await getSupabaseUserId(req);
+      const supabaseUserId = await getSupabaseUserId(request);
       if (supabaseUserId) {
         // ページ数は仮で1ページとする（実際のPDFページ数を取得可能な場合は修正）
         const pageCount = 1;

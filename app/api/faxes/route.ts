@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { logFaxSent, logFaxScheduled } from "@/lib/shared/audit-logger";
 import { saveSendUsage } from "@/lib/usage/saveUsage";
 import { getSupabaseUserId } from "@/lib/supabase/getUserId";
 
 // 履歴一覧取得 (GET)
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
   const filters: any = {};
 
   // 日付フィルター (YYYY-MM-DD)
@@ -42,9 +42,9 @@ export async function GET(req: Request) {
 }
 
 // 履歴登録 (POST) - 送信完了時に呼び出される
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
     
     // 管理会社を取得または作成
     let company = await prisma.company.findFirst({
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
 
       // Supabaseのusage_recordsにも保存（user_idが取得できる場合のみ）
       try {
-        const supabaseUserId = await getSupabaseUserId(req);
+        const supabaseUserId = await getSupabaseUserId(request);
         if (supabaseUserId) {
           // ページ数は仮で1ページとする（実際のPDFページ数を取得可能な場合は修正）
           const pageCount = 1;

@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
 /**
  * usage_recordsを取得（ユーザーIDと期間でフィルタリング可能）
  */
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const userId = searchParams.get('user_id');
     const limit = parseInt(searchParams.get('limit') || '10', 10);
 

@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 /**
  * 管理会社マスタ一覧取得
  * GET /api/real-estate/outbound/master-companies
  */
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const tags = searchParams.get("tags"); // カンマ区切り
 
@@ -62,9 +62,9 @@ export async function GET(req: Request) {
  * 管理会社マスタ作成
  * POST /api/real-estate/outbound/master-companies
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // バリデーション
     if (!data.company_id) {

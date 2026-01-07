@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { matchProperty } from "@/lib/real-estate/matching/property-matcher";
 import { prisma } from "@/lib/prisma";
 
@@ -6,9 +6,9 @@ import { prisma } from "@/lib/prisma";
  * 物件紐づけ実行
  * POST /api/real-estate/inbound/match-property
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // バリデーション
     if (!data.received_fax_id) {

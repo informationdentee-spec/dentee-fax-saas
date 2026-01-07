@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // 最近の送信先を取得（送信先候補として表示）
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // 最近30日以内に送信したFAXから、送信先を集計
     const thirtyDaysAgo = new Date();

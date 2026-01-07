@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { saveReceiveUsage } from "@/lib/usage/saveUsage";
 import { getSupabaseUserId } from "@/lib/supabase/getUserId";
 
 // 受信FAX一覧取得
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const receivedFaxes = await prisma.receivedFax.findMany({
       orderBy: { received_at: 'desc' }
@@ -17,9 +17,9 @@ export async function GET() {
 }
 
 // 受信FAX作成（受信時に呼び出される）
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
     const receivedFax = await prisma.receivedFax.create({
       data: {
         from_fax_number: data.from_fax_number,
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
     // Supabaseのusage_recordsにも保存（user_idが取得できる場合のみ）
     try {
-      const supabaseUserId = await getSupabaseUserId(req);
+      const supabaseUserId = await getSupabaseUserId(request);
       if (supabaseUserId) {
         // ページ数は仮で1ページとする（実際のPDFページ数を取得可能な場合は修正）
         const pageCount = 1;

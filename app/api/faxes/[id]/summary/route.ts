@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // AI要約を生成
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id: idString } = await params;
+    const { id: idString } = await context.params;
     const id = Number(idString);
 
     const fax = await prisma.fax.findUnique({

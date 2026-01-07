@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   // ※ここで本物のOCR処理を行いますが、今はモックデータを返します
   // 処理に時間がかかるフリをする（1.5秒待機）
   await new Promise((resolve) => setTimeout(resolve, 1500));

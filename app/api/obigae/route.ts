@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import puppeteer from 'puppeteer';
 import { prisma } from '@/lib/prisma';
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { image, obi_image, obi_scale = 100, obi_position_x = 0, obi_position_y = 0 } = await req.json();
+    const { image, obi_image, obi_scale = 100, obi_position_x = 0, obi_position_y = 0 } = await request.json();
 
     // 1. 帯画像が指定されている場合は、それを上から貼り付ける
     // 帯画像がない場合は、従来のテキストベースの帯を生成

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import puppeteer from 'puppeteer';
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
     const { 
       license_number, 
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       fax, 
       holiday, 
       transaction_type 
-    } = await req.json();
+    } = await request.json();
 
     // サイズ: 1,115px（横） × 140px（縦）
     const width = 1115;

@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // テンプレート更新
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id: idString } = await params;
+    const { id: idString } = await context.params;
     const id = Number(idString);
-    const data = await req.json();
+    const data = await request.json();
 
     const template = await prisma.faxTemplate.update({
       where: { id },
@@ -25,9 +25,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 // テンプレート削除
-export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id: idString } = await params;
+    const { id: idString } = await context.params;
     const id = Number(idString);
 
     await prisma.faxTemplate.delete({

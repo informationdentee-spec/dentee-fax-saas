@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // アドレス帳更新
 export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const addressId = Number(id);
-    const data = await req.json();
+    const data = await request.json();
 
     const address = await prisma.addressBook.update({
       where: { id: addressId },
@@ -35,11 +35,11 @@ export async function PUT(
 
 // アドレス帳削除
 export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const addressId = Number(id);
 
     await prisma.addressBook.delete({

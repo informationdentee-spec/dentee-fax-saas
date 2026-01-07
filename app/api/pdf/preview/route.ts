@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import puppeteer from "puppeteer"; // ※ npm install puppeteer が必要です
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json(); // フロントエンドから物件情報などを受け取る
+    const data = await request.json(); // フロントエンドから物件情報などを受け取る
 
     // 1. ブラウザを起動 (Puppeteer)
     const browser = await puppeteer.launch({

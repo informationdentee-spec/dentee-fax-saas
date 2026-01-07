@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // ユーザーの権限を取得
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const userId = Number(id);
 
     const user = await prisma.user.findUnique({
@@ -30,10 +30,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 // ユーザーの権限を更新
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await params;
-    const { role } = await req.json();
+    const { id } = await context.params;
+    const { role } = await request.json();
 
     if (!["agent", "admin", "manager"].includes(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });

@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // 名刺一覧取得
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const businessCards = await prisma.businessCard.findMany({
       orderBy: { created_at: 'desc' }
@@ -15,9 +15,9 @@ export async function GET() {
 }
 
 // 名刺作成
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await request.json();
     
     const businessCard = await prisma.businessCard.create({
       data: {

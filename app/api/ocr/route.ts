@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   // ※ 本来はここで画像解析を行いますが、MVP動作確認のため固定データを返します
   // これにより、フロントエンドの「自動入力」が機能するか確認できます
   

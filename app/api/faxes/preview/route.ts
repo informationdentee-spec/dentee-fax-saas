@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 // ※ローカル環境での動作を想定。Vercel等へのデプロイ時は chromium パッケージの調整が必要
 import puppeteer from 'puppeteer';
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // 1. PDF化するHTMLテンプレートの作成
     const htmlContent = `

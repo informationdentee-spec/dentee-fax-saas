@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // AI要約を生成
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const id = Number(params.id);
+    const { id } = await context.params;
+    const idNumber = Number(id);
 
     const fax = await prisma.receivedFax.findUnique({
-      where: { id }
+      where: { id: idNumber }
     });
 
     if (!fax) {
@@ -20,7 +21,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     // 要約をデータベースに保存
     await prisma.receivedFax.update({
-      where: { id },
+      where: { id: idNumber },
       data: { ai_summary: summary }
     });
 

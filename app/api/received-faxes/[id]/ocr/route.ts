@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { processOCR } from "@/lib/shared/ocr-unified";
 
 // 受信FAXのOCR処理を実行（統合OCRサービスを使用）
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
     const faxId = Number(id);
 
     const fax = await prisma.receivedFax.findUnique({

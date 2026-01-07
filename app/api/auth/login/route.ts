@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password } = await request.json();
     
     // 簡易的な認証（実際の実装では適切なパスワードハッシュ化が必要）
     // 現在はemailでユーザーを検索し、パスワードチェックをスキップ

@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 // テンプレート一覧取得
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const templates = await prisma.faxTemplate.findMany({
       orderBy: [
@@ -20,9 +20,9 @@ export async function GET() {
 }
 
 // テンプレート作成
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
     const template = await prisma.faxTemplate.create({
       data: {
         name: data.name,

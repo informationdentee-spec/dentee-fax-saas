@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { processOCR } from "@/lib/shared/ocr-unified";
 import { extractRealEstateFields } from "@/lib/real-estate/ocr/real-estate-parser";
 
@@ -7,9 +7,9 @@ import { extractRealEstateFields } from "@/lib/real-estate/ocr/real-estate-parse
  * 項目抽出実行
  * POST /api/real-estate/inbound/extract-fields
  */
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
+    const data = await request.json();
 
     // バリデーション
     if (!data.received_fax_id && !data.image_url && !data.ocr_text) {
