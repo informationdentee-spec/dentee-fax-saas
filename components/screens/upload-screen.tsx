@@ -62,7 +62,8 @@ export function UploadScreen({ onAnalyzeComplete, onNavigateToHistory, initialEd
   const convertPdfToImage = async (file: File): Promise<File> => {
     try {
       // pdf.jsを動皁E�E��E�読み込む
-      const pdfjsLib = await import('pdfjs-dist');
+      // PDFプレビュー機能は一時的に無効化されています
+      throw new Error('PDF preview is currently disabled');
       
       // Workerファイルのパスを設定！EDNから読み込む�E�E�E�E      // ブラウザ環境でのみ実行
       if (typeof window === 'undefined') {
@@ -70,7 +71,6 @@ export function UploadScreen({ onAnalyzeComplete, onNavigateToHistory, initialEd
       }
 
       // Workerを設定（ブラウザ用ES Module）
-      const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.js?url');
       if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
       }

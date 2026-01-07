@@ -416,53 +416,10 @@ export function NewSendScreen({ onSendComplete, onNavigateToHistory, initialEdit
     }
   }, [attachBusinessCard, selectedPurpose, formData.company_name, formData.staff_name, formData.company_phone, selectedBusinessCardTemplate, businessCardTemplates, selectedUser]);
 
-  // PDFを画像に変換
+  // PDFを画像に変換（現在無効化）
   const convertPdfToImage = async (file: File): Promise<string> => {
-    try {
-      // ブラウザ環境でのみ実行
-      if (typeof window === 'undefined') {
-        throw new Error('PDF conversion is only available in browser');
-      }
-
-      // pdfjs-distをブラウザ用ES Moduleとして動的インポート
-      const pdfjsLib = await import('pdfjs-dist');
-      const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.js?url');
-
-      // Workerを設定（ブラウザ用）
-      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
-      }
-
-      const arrayBuffer = await file.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, useSystemFonts: true });
-      const pdf = await loadingTask.promise;
-      const page = await pdf.getPage(1);
-
-      const viewport = page.getViewport({ scale: 2.0 });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Canvas context not available');
-
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-
-      await page.render({ canvasContext: context, viewport: viewport }).promise;
-
-      return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          } else {
-            reject(new Error('Failed to convert PDF to image'));
-          }
-        });
-      });
-    } catch (error) {
-      throw error;
-    }
+    // PDFプレビュー機能は一時的に無効化されています
+    throw new Error('PDF preview is currently disabled');
   };
 
   // ファイル処理
