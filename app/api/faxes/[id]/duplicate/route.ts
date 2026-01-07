@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  const id = Number(params.id);
+export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  const idNumber = Number(id);
 
   try {
     // 1. 元の履歴を取得
-    const original = await prisma.fax.findUnique({ where: { id } });
+    const original = await prisma.fax.findUnique({ where: { id: idNumber } });
     
     if (!original) {
       return NextResponse.json({ error: "Record not found" }, { status: 404 });
