@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ユーザー指定のカラーパレット */
+    --bg: #FFFFFF;
+    --primary: #0B66FF;
+    --accent: #0A84FF;
+    --surface: #F5F8FF;
+    --text: #111827;
+    --muted: #6B7280;
+    --error: #EF4444;
+
+    /* 境界線などの色（追加定義） */
+    --border: #E5E7EB;
+  }
+
+  body {
+    background-color: var(--surface);
+    color: var(--text);
+    /* タイポグラフィ設定 */
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+
+  /* 
+   * デザイン要件の実装:
+   * - 高さ: 48px
+   * - 角丸: 10px
+   * - フォント: Inter Bold (600)
+   */
+  .btn-primary {
+    @apply h-[48px] px-6 rounded-[10px] bg-[var(--primary)] text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98] shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply h-[48px] px-6 rounded-[10px] bg-white border border-[var(--border)] text-[var(--text)] font-semibold flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors;
+  }
+
+  /* 
+   * フォーム要件:
+   * - 高さ: 44-48px (ここでは48pxに統一)
+   * - 入力はフル幅
+   * - ボーダー処理
+   */
+  .input-base {
+    @apply w-full h-[48px] px-4 rounded-[10px] border border-[var(--border)] bg-white text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent transition-all placeholder:text-[var(--muted)];
+  }
+
+  .label-base {
+    @apply block text-sm font-semibold text-[var(--text)] mb-2;
+  }
+
+  /* カードデザイン（モバイル対応含む） */
+  .card {
+    @apply bg-[var(--bg)] rounded-[16px] shadow-sm border border-[var(--border)] p-6;
+  }
+}

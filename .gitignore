@@ -1,0 +1,15 @@
+# Vercel
+.vercel/
+
+# Next.js build output
+.next/
+
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+.env.local
+
+# Editor settings
+.vscode/

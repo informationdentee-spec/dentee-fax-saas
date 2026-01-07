@@ -1,0 +1,17 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/scheduled-faxes",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+
+
+
+
+
+
+
+
+

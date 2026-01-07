@@ -1,0 +1,375 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 担当者テーブル
+model User {
+  id                         Int                         @id @default(autoincrement())
+  name                       String
+  email                      String
+  role                       String                      @default("agent") // "agent", "admin", "manager"など
+  business_card              String? // Base64画像データ
+  agent_tel                  String? // 担当者直通番号
+  agent_email                String? // 担当者メールアドレス
+  faxes                      Fax[]
+  faxAuditLogs               FaxAuditLog[]
+  receivedFaxClassifications ReceivedFaxClassification[]
+  autoRoutingRules           AutoRoutingRule[]
+}
+
+// 管理会社テーブル
+model Company {
+  id               Int            @id @default(autoincrement())
+  name             String
+  phone            String?
+  address          String?
+  postal_code      String? // 郵便番号
+  prefecture       String? // 都道府県名
+  city             String? // 市区町村
+  street           String? // 番地
+  building         String? // ビル・マンション名
+  email            String? // 会社宛メールアドレス
+  license_number   String? // 不動産免許番号
+  fax              String? // FAX番号
+  holiday          String? // 定休日
+  transaction_type String? // 取引様態（例: 媒介）
+  faxes            Fax[]
+  properties       Property[]
+  masterCompany    MasterCompany?
+}
+
+// 物件テーブル
+model Property {
+  id                         Int                         @id @default(autoincrement())
+  name                       String
+  address                    String
+  room_number                String?
+  company_id                 Int
+  company                    Company                     @relation(fields: [company_id], references: [id])
+  faxes                      Fax[]
+  receivedFaxClassifications ReceivedFaxClassification[]
+}
+
+// 送信履歴テーブル
+model Fax {
+  id             Int       @id @default(autoincrement())
+  property_id    Int
+  company_id     Int
+  user_id        Int
+  fax_number     String
+  sent_at        DateTime
+  status         String // "success", "failed", "pending"
+  purpose        String? // 送信目的（"visit_request", "application", "additional_documents", "other", "business_card"）
+  unlock_method  String? // 電話で確認した解錠方法
+  notes          String? // 注意事項メモ
+  image_url      String? // Base64画像データ（マイソク図面）
+  visit_date     String? // 内見予約日
+  visit_time     String? // 内見予約時間
+  company_phone  String? // 管理会社電話番号
+  template_id    Int? // 使用したテンプレートID
+  scheduled_at   DateTime? // 予約送信日時
+  retry_enabled  Boolean   @default(false) // 自動リトライ有効
+  retry_count    Int       @default(0) // リトライ回数
+  retry_max      Int       @default(3) // 最大リトライ回数
+  retry_interval Int       @default(60) // リトライ間隔（秒）
+  is_read        Boolean   @default(false) // 未読フラグ（送信履歴では使用しないが互換性のため保持）
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  user      User          @relation(fields: [user_id], references: [id])
+  property  Property      @relation(fields: [property_id], references: [id])
+  company   Company       @relation(fields: [company_id], references: [id])
+  template  FaxTemplate?  @relation(fields: [template_id], references: [id])
+  auditLogs FaxAuditLog[]
+}
+
+// 受信FAXテーブル
+model ReceivedFax {
+  id                 Int      @id @default(autoincrement())
+  from_fax_number    String // 送信元FAX番号
+  from_company_name  String? // 送信元会社名（OCRで抽出）
+  received_at        DateTime @default(now()) // 受信日時
+  image_url          String? // 受信FAX画像（Base64画像データ）
+  ocr_text           String? // OCRで抽出したテキスト
+  ai_summary         String? // AI要約
+  is_read            Boolean  @default(false) // 未読フラグ
+  property_name      String? // 物件名（OCRで抽出）
+  room_number        String? // 号室（OCRで抽出）
+  notes              String? // 備考・メモ
+  document_type      String? // 書類種別（AI推測: "内見申請", "申込書", "契約書", "その他"など）
+  urgency            String? // 緊急度（AI推測: "high", "medium", "low"）
+  context_prediction String? // 文脈推測結果（JSON形式で保存）
+  next_actions       String? // ネクストアクション（JSON形式で保存）
+  status             String?  @default("received") // "received", "processing", "processed", "error"
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  classification ReceivedFaxClassification?
+  tags           ReceivedFaxTag[]
+  printJobs      PrintJob[]
+}
+
+// FAX送信テンプレートテーブル
+model FaxTemplate {
+  id         Int      @id @default(autoincrement())
+  name       String // テンプレート名（例: "内見申請"）
+  category   String // カテゴリ（例: "内見申請", "申込書送付", "不足書類送付", "案内報告"）
+  content    String // テンプレート本文
+  is_default Boolean  @default(false) // デフォルトテンプレート
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  faxes                       Fax[]
+  realEstateDocumentTemplates RealEstateDocumentTemplate[]
+}
+
+// システム設定・自社情報（シングルトン想定）
+model Settings {
+  id                     Int     @id @default(autoincrement())
+  company_name           String?
+  company_address        String?
+  company_phone          String?
+  company_fax            String?
+  obi_image              String? // 帯画像（Base64画像データ）
+  business_card_template String? // 名刺テンプレート（HTML）
+  business_card_image    String? // 名刺画像（Base64画像データ、既存デザインがある場合）
+
+  fax_success_notify Boolean @default(true)
+  fax_failure_notify Boolean @default(true)
+
+  timezone   String @default("Asia/Tokyo")
+  language   String @default("ja")
+  pdf_format String @default("A4")
+}
+
+// 利用明細テーブル
+model UsageStatement {
+  id             Int      @id @default(autoincrement())
+  usage_month    String // 利用年月（YYYY-MM形式）
+  sent_count     Int      @default(0) // 送信枚数
+  received_count Int      @default(0) // 受信枚数
+  base_fee       Int      @default(0) // 基本料金（円）
+  usage_fee      Int      @default(0) // 利用料（円）
+  tax_amount     Int      @default(0) // 税額（円）
+  total_amount   Int      @default(0) // 請求金額（円）
+  receipt_pdf    String? // 領収書PDF（Base64またはURL）
+  payment_pdf    String? // 支払明細PDF（Base64またはURL）
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+}
+
+// 利用枚数カウントテーブル（無期限保持、履歴削除の影響を受けない）
+model UsageCount {
+  id             Int      @id @default(autoincrement())
+  usage_year     Int      // 利用年（YYYY形式）
+  usage_month    Int      // 利用月（1-12）
+  sent_count     Int      @default(0) // 送信枚数
+  received_count Int      @default(0) // 受信枚数
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@unique([usage_year, usage_month])
+  @@index([usage_year, usage_month])
+}
+
+// クレジットカード情報テーブル
+model CreditCard {
+  id                Int      @id @default(autoincrement())
+  card_number_last4 String? // カード番号下4桁
+  card_brand        String? // カードブランド（Visa, MasterCard等）
+  expiry_month      String? // 有効期限（月）
+  expiry_year       String? // 有効期限（年）
+  cardholder_name   String? // カード名義人
+  is_default        Boolean  @default(true) // デフォルトカード
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+}
+
+// ============================================
+// 🆕 不動産業界特化機能 - 新規テーブル
+// ============================================
+
+// 🆕 不動産書類テンプレート（既存FaxTemplateを拡張する代わりに、特化テンプレートを別管理）
+model RealEstateDocumentTemplate {
+  id            Int      @id @default(autoincrement())
+  name          String
+  category      String // "申込書", "契約書", "内見申請", "修繕依頼", "物件確認", "審査結果"など
+  template_type String // "form", "letter", "report", "contract"
+  content       String // HTML/JSON形式のテンプレート
+  variables     String? // JSON形式の変数定義（例: {"property_name": "物件名", "room_number": "号室"}）
+  preview_image String? // プレビュー画像（Base64）
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // 既存FaxTemplateとの関連（オプション）
+  base_template_id Int?
+  base_template    FaxTemplate? @relation(fields: [base_template_id], references: [id])
+}
+
+// 🆕 管理会社マスタ（既存Companyテーブルを拡張する代わりに、特化情報を別テーブルで管理）
+model MasterCompany {
+  id                   Int      @id @default(autoincrement())
+  company_id           Int      @unique // Companyテーブルへの参照
+  company              Company  @relation(fields: [company_id], references: [id])
+  preferred_fax_number String? // 優先FAX番号
+  business_hours       String? // 営業時間（JSON形式: {"weekdays": "9:00-18:00", "weekends": "10:00-17:00"}）
+  contact_person       String? // 担当者名
+  department           String? // 部署名
+  notes                String? // 備考
+  tags                 String? // JSON形式のタグ（例: ["重要", "自動返信対応"]）
+  auto_reply_enabled   Boolean  @default(false) // 自動返信有効化
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+}
+
+// 🆕 アドレス帳テーブル
+model AddressBook {
+  id             Int      @id @default(autoincrement())
+  name           String // 会社名・組織名
+  fax_number     String // FAX番号
+  phone          String? // 電話番号
+  email          String? // メールアドレス
+  address        String? // 住所
+  contact_person String? // 担当者名
+  notes          String? // 備考
+  tags           String? // JSON形式のタグ（例: ["重要", "頻繁に使用"]）
+  is_favorite    Boolean  @default(false) // お気に入りフラグ
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+}
+
+// 🆕 名刺テーブル
+model BusinessCard {
+  id             Int      @id @default(autoincrement())
+  name           String // 担当者名
+  email          String? // メールアドレス
+  phone          String? // 電話番号
+  position       String? // 役職
+  department     String? // 部署
+  image          String? // Base64画像データ
+  template_html  String? // HTMLテンプレート（名刺生成用）
+  variables      String? // JSON形式の変数（名刺生成時の変数）
+  notes          String? // 備考
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+}
+
+// 🆕 送信ログ・証跡（既存Faxテーブルを拡張）
+model FaxAuditLog {
+  id            Int      @id @default(autoincrement())
+  fax_id        Int
+  fax           Fax      @relation(fields: [fax_id], references: [id])
+  action        String // "sent", "failed", "retried", "cancelled", "scheduled", "rescheduled"
+  status        String // "success", "failed", "pending", "cancelled"
+  error_message String?
+  metadata      String? // JSON形式のメタデータ（送信先、送信時刻、再送回数など）
+  ip_address    String? // 送信元IPアドレス（監査用）
+  user_id       Int? // 送信ユーザーID
+  user          User?    @relation(fields: [user_id], references: [id])
+  created_at    DateTime @default(now())
+
+  @@index([fax_id])
+  @@index([created_at])
+  @@index([action])
+}
+
+// 🆕 受信FAX分類結果（既存ReceivedFaxテーブルを拡張）
+model ReceivedFaxClassification {
+  id                Int         @id @default(autoincrement())
+  received_fax_id   Int         @unique
+  received_fax      ReceivedFax @relation(fields: [received_fax_id], references: [id])
+  document_type     String // "申込書", "物件確認", "修繕依頼", "審査結果", "契約書", "その他"など
+  confidence        Float // 分類の信頼度 (0-1)
+  extracted_fields  String? // JSON形式の抽出項目（例: {"contract_date": "2024-01-15", "rent": "80000"}）
+  property_match_id Int? // 紐づけられた物件ID
+  property          Property?   @relation(fields: [property_match_id], references: [id])
+  assigned_user_id  Int? // 振り分けられた担当者ID
+  assigned_user     User?       @relation(fields: [assigned_user_id], references: [id])
+  routing_rule_id   Int? // 使用した振り分けルールID
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+
+  @@index([document_type])
+  @@index([property_match_id])
+  @@index([assigned_user_id])
+}
+
+// 🆕 受信FAXタグ
+model ReceivedFaxTag {
+  id              Int         @id @default(autoincrement())
+  received_fax_id Int
+  received_fax    ReceivedFax @relation(fields: [received_fax_id], references: [id])
+  tag             String
+  created_at      DateTime    @default(now())
+
+  @@unique([received_fax_id, tag])
+  @@index([tag])
+}
+
+// 🆕 自動返信テンプレート
+model AutoReplyTemplate {
+  id                 Int      @id @default(autoincrement())
+  trigger_type       String // "物件確認", "修繕依頼", "申込書受領"など
+  trigger_keywords   String? // JSON形式のトリガーキーワード（例: ["物件確認", "物件について"]）
+  template_content   String
+  template_variables String? // JSON形式の変数定義
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+}
+
+// 🆕 自動振り分けルール
+model AutoRoutingRule {
+  id                Int      @id @default(autoincrement())
+  name              String
+  priority          Int      @default(0) // 優先度（高いほど優先）
+  conditions        String // JSON形式の条件（例: {"document_type": "申込書", "urgency": "high"}）
+  target_user_id    Int? // 振り分け先ユーザーID
+  target_user       User?    @relation(fields: [target_user_id], references: [id])
+  target_department String? // 振り分け先部署名
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@index([priority])
+}
+
+// 🆕 基幹システム連携設定
+model SystemIntegration {
+  id           Int       @id @default(autoincrement())
+  system_name  String // "物件管理システム", "顧客管理システム", "会計システム"など
+  system_type  String // "property_management", "crm", "accounting", "custom"
+  api_endpoint String
+  api_key      String? // 暗号化して保存（環境変数または暗号化ライブラリ使用）
+  api_secret   String? // 暗号化して保存
+  config       String? // JSON形式の設定（認証方式、同期間隔など）
+  is_active    Boolean   @default(true)
+  last_sync_at DateTime? // 最終同期時刻
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  @@unique([system_name])
+}
+
+// 🆕 印刷ジョブ
+model PrintJob {
+  id              Int          @id @default(autoincrement())
+  received_fax_id Int?
+  received_fax    ReceivedFax? @relation(fields: [received_fax_id], references: [id])
+  document_type   String // "図面", "資料", "契約書"など
+  printer_name    String? // プリンター名
+  status          String       @default("pending") // "pending", "printing", "completed", "failed"
+  error_message   String?
+  created_at      DateTime     @default(now())
+  completed_at    DateTime?
+
+  @@index([status])
+  @@index([received_fax_id])
+}

@@ -1,0 +1,3804 @@
+﻿----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\analyze\route.ts
+----------------------------------------------------------------
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  // 窶ｻ縺薙％縺ｧ譛ｬ迚ｩ縺ｮOCR蜃ｦ逅・ｒ陦後＞縺ｾ縺吶′縲∽ｻ翫・繝｢繝・け繝・・繧ｿ繧定ｿ斐＠縺ｾ縺・
+  // 蜃ｦ逅・↓譎る俣縺後°縺九ｋ繝輔Μ繧偵☆繧具ｼ・.5遘貞ｾ・ｩ滂ｼ・
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
+  return NextResponse.json({
+    fax_number: "03-1234-5678",
+    company_name: "譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣邂｡逅・,
+    property_name: "繧ｰ繝ｩ繝ｳ繝峨Γ繧ｾ繝ｳ貂玖ｰｷ",
+    address: "譚ｱ莠ｬ驛ｽ貂玖ｰｷ蛹ｺ逾槫ｮｮ蜑・-2-3",
+    room_number: "301蜿ｷ螳､",
+    // 菫｡鬆ｼ蠎ｦ繧ｹ繧ｳ繧｢縺ｪ縺ｩ繧よ悽譚･縺ｯ霑斐＠縺ｾ縺・
+  });
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\companies\[id]\route.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const id = Number(params.id);
+    const body = await req.json();
+    
+    const company = await prisma.company.update({
+      where: { id },
+      data: {
+        name: body.name,
+        address: body.address,
+        phone: body.phone
+      }
+    });
+    return NextResponse.json(company);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to update company" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\companies\route.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+// 莨夂､ｾ荳隕ｧ蜿門ｾ・
+export async function GET() {
+  const companies = await prisma.company.findMany();
+  return NextResponse.json(companies);
+}
+
+// 莨夂､ｾ譁ｰ隕冗匳骭ｲ
+export async function POST(req: Request) {
+  const data = await req.json();
+  const company = await prisma.company.create({ data });
+  return NextResponse.json(company);
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\faxes\preview\route.ts
+----------------------------------------------------------------
+mport { NextResponse } from 'next/server';
+// 窶ｻ繝ｭ繝ｼ繧ｫ繝ｫ迺ｰ蠅・〒縺ｮ蜍穂ｽ懊ｒ諠ｳ螳壹７ercel遲峨∈縺ｮ繝・・繝ｭ繧､譎ゅ・ chromium 繝代ャ繧ｱ繝ｼ繧ｸ縺ｮ隱ｿ謨ｴ縺悟ｿ・ｦ・
+import puppeteer from 'puppeteer';
+
+export async function POST(req: Request) {
+  try {
+    const data = await req.json();
+
+    // 1. PDF蛹悶☆繧稀TML繝・Φ繝励Ξ繝ｼ繝医・菴懈・
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Helvetica', 'Arial', sans-serif; padding: 40px; color: #333; }
+          .header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: end; }
+          .title { font-size: 24px; font-weight: bold; }
+          .date { font-size: 14px; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+          .box { border: 1px solid #ccc; padding: 15px; border-radius: 4px; background: #f9f9f9; }
+          .label { font-size: 12px; color: #666; margin-bottom: 5px; font-weight: bold; }
+          .value { font-size: 16px; font-weight: bold; }
+          .message { margin: 30px 0; padding: 20px; border: 1px solid #333; min-height: 100px; }
+          .footer { margin-top: 50px; font-size: 12px; text-align: center; color: #999; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">蜀・ｦ倶ｾ晞ｼ譖ｸ</div>
+          <div class="date">${new Date().toLocaleDateString()}</div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <div class="label">騾∽ｿ｡蜈・(邂｡逅・ｼ夂､ｾ)</div>
+          <div class="value" style="font-size: 20px;">${data.company_name || '・育ｮ｡逅・ｼ夂､ｾ蜷肴悴蜈･蜉幢ｼ・} 蠕｡荳ｭ</div>
+          <div class="value">FAX: ${data.fax_number || '・・AX逡ｪ蜿ｷ譛ｪ蜈･蜉幢ｼ・}</div>
+        </div>
+
+        <div class="message">
+          <p>諡晏蕪</p>
+          <p>蟷ｳ邏縺ｯ螟ｧ螟峨♀荳冶ｩｱ縺ｫ縺ｪ縺｣縺ｦ縺翫ｊ縺ｾ縺吶・br>
+          荳玖ｨ倡黄莉ｶ縺ｮ蜀・ｦ九ｒ縺企｡倥＞縺励◆縺上√＃騾｣邨｡縺・◆縺励∪縺励◆縲・/p>
+          <p>菴募穀繧医ｍ縺励￥縺企｡倥＞逕ｳ縺嶺ｸ翫￡縺ｾ縺吶・/p>
+        </div>
+
+        <div class="grid">
+          <div class="box">
+            <div class="label">迚ｩ莉ｶ蜷・/div>
+            <div class="value">${data.property_name || ''}</div>
+          </div>
+          <div class="box">
+            <div class="label">驛ｨ螻狗分蜿ｷ</div>
+            <div class="value">${data.room_number || ''}</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="box">
+            <div class="label">騾∽ｿ｡蜈・(莉ｲ莉区･ｭ閠・</div>
+            <div class="value">${data.sender_card?.company || '譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣'}</div>
+            <div class="value" style="margin-top:5px;">諡・ｽ・ ${data.sender_card?.name || '諡・ｽ楢・}</div>
+            <div class="value">TEL: ${data.sender_card?.phone || '03-0000-0000'}</div>
+          </div>
+          <div class="box" style="display: flex; align-items: center; justify-content: center; background: #fff;">
+             ${data.sender_card ? '<div style="color:#999;">[蜷榊絢逕ｻ蜒乗ｷｻ莉倥せ繝壹・繧ｹ]</div>' : '<div style="color:#ccc;">蜷榊絢縺ｪ縺・/div>'}
+          </div>
+        </div>
+
+        <div class="footer">
+          System by RealEstate FAX MVP
+        </div>
+      </body>
+      </html>
+    `;
+
+    // 2. Puppeteer縺ｮ襍ｷ蜍輔→PDF逕滓・
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    
+    // HTML繧偵そ繝・ヨ
+    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    
+    // PDF繝舌ャ繝輔ぃ繧堤函謌・
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+
+    await browser.close();
+
+    // 3. 繝ｬ繧ｹ繝昴Φ繧ｹ縺ｨ縺励※PDF繧定ｿ斐☆
+    return new NextResponse(pdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline; filename="preview.pdf"',
+      },
+    });
+
+  } catch (error) {
+    console.error("PDF Generate Error:", error);
+    return NextResponse.json({ error: "PDF generation failed" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\faxes\[id]\duplicate\route.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  const id = Number(params.id);
+
+  try {
+    // 1. 蜈・・螻･豁ｴ繧貞叙蠕・
+    const original = await prisma.fax.findUnique({ where: { id } });
+    
+    if (!original) {
+      return NextResponse.json({ error: "Record not found" }, { status: 404 });
+    }
+
+    // 2. 繝・・繧ｿ繧定､・｣ｽ縺励※譁ｰ隕丈ｽ懈・・・ent_at縺ｯ迴ｾ蝨ｨ譎ょ綾縲《tatus縺ｯpending縺ｫ繝ｪ繧ｻ繝・ヨ・・
+    const duplicated = await prisma.fax.create({
+      data: {
+        property_id: original.property_id,
+        company_id: original.company_id,
+        user_id: original.user_id,
+        fax_number: original.fax_number,
+        sent_at: new Date(), // 迴ｾ蝨ｨ譎ょ綾
+        status: "pending",   // 騾∽ｿ｡蠕・■迥ｶ諷・
+        unlock_method: original.unlock_method,
+        notes: original.notes,
+      },
+    });
+
+    return NextResponse.json(duplicated);
+  } catch (error) {
+    console.error("Duplicate Error:", error);
+    return NextResponse.json({ error: "Failed to duplicate" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\faxes\[id]\route.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { sendFaxNotification } from "@/utils/notifications";
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export async function PUT(req: Request, { params }: Props) {
+  const { id: rawId } = await params;
+  const id = Number(rawId);
+  const data = await req.json();
+
+  try {
+    // 譖ｴ譁ｰ繝・・繧ｿ縺ｮ讒狗ｯ・
+    const updateData: any = {
+      status: data.status,
+      notes: data.notes,
+      unlock_method: data.unlock_method,
+    };
+
+    // 諡・ｽ楢・､画峩縺後≠繧後・譖ｴ譁ｰ
+    if (data.user_id) {
+      updateData.user_id = Number(data.user_id);
+    }
+
+    // 騾∽ｿ｡譌･譎ゑｼ井ｺ育ｴ・律譎ゑｼ峨・螟画峩縺後≠繧後・譖ｴ譁ｰ
+    // 窶ｻ縲御ｻ翫☆縺宣∽ｿ｡(success)縲阪・譎ゅ・迴ｾ蝨ｨ譎ょ綾縲√◎繧御ｻ･螟悶・謖・ｮ壹＆繧後◆譌･譎ゅｒ菴ｿ逕ｨ
+    if (data.status === 'success') {
+      updateData.sent_at = new Date();
+    } else if (data.sent_at) {
+      updateData.sent_at = new Date(data.sent_at);
+    }
+
+    const updatedFax = await prisma.fax.update({
+      where: { id },
+      data: updateData,
+      include: { user: true, property: true, company: true }
+    });
+
+    // 騾∽ｿ｡謌仙粥繧ｹ繝・・繧ｿ繧ｹ縺ｫ螟峨ｏ縺｣縺溷ｴ蜷医・縺ｿ騾夂衍
+    if (data.status === 'success') {
+      await sendFaxNotification(updatedFax.id);
+    }
+
+    return NextResponse.json(updatedFax);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Update failed" }, { status: 500 });
+  }
+}
+
+// DELETE縺ｯ螟画峩縺ｪ縺・
+export async function DELETE(req: Request, { params }: Props) {
+  const { id: rawId } = await params;
+  const id = Number(rawId);
+  try {
+    await prisma.fax.delete({ where: { id } });
+    return NextResponse.json({ message: "Deleted successfully" });
+  } catch (error) {
+    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\faxes\route.ts
+----------------------------------------------------------------
+// lib/prisma.ts
+import { PrismaClient } from '@prisma/client';
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+export const prisma = globalForPrisma.prisma || new PrismaClient();
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+繝輔ぃ繧､繝ｫ: app/api/faxes/route.ts
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+// 螻･豁ｴ荳隕ｧ蜿門ｾ・(GET)
+// 莉墓ｧ・ date, user_id, property_id, company_id 縺ｧ繝輔ぅ繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ蜿ｯ閭ｽ
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  
+  const filters: any = {};
+  
+  // 譌･莉倥ヵ繧｣繝ｫ繧ｿ繝ｼ (YYYY-MM-DD)
+  const date = searchParams.get('date');
+  if (date) {
+    // 謖・ｮ壽律縺ｮ 00:00:00 ・・23:59:59 繧堤ｯ・峇謖・ｮ・
+    filters.sent_at = {
+      gte: new Date(`${date}T00:00:00Z`),
+      lt: new Date(`${date}T23:59:59Z`)
+    };
+  }
+
+  // ID繝輔ぅ繝ｫ繧ｿ繝ｼ・域焚蛟､螟画鋤縺励※驕ｩ逕ｨ・・
+  if (searchParams.get('user_id')) filters.user_id = Number(searchParams.get('user_id'));
+  if (searchParams.get('property_id')) filters.property_id = Number(searchParams.get('property_id'));
+  if (searchParams.get('company_id')) filters.company_id = Number(searchParams.get('company_id'));
+
+  try {
+    // 髢｢騾｣繝・・繝悶Ν(user, property, company)繧堤ｵ仙粋(include)縺励※蜿門ｾ・
+    const faxes = await prisma.fax.findMany({
+      where: filters,
+      include: { 
+        user: true, 
+        property: true, 
+        company: true 
+      },
+      orderBy: { sent_at: 'desc' }
+    });
+
+    return NextResponse.json(faxes);
+  } catch (error) {
+    console.error("API Error:", error);
+    return NextResponse.json({ error: "Failed to fetch faxes" }, { status: 500 });
+  }
+}
+
+// 螻･豁ｴ逋ｻ骭ｲ (POST) - 騾∽ｿ｡螳御ｺ・凾縺ｫ蜻ｼ縺ｳ蜃ｺ縺輔ｌ繧・
+export async function POST(req: Request) {
+  try {
+    const data = await req.json();
+    
+    const fax = await prisma.fax.create({
+      data: {
+        property_id: Number(data.property_id),
+        company_id: Number(data.company_id),
+        user_id: Number(data.user_id),
+        fax_number: data.fax_number,
+        sent_at: new Date(data.sent_at),
+        status: data.status,
+        unlock_method: data.unlock_method,
+        notes: data.notes
+      }
+    });
+    return NextResponse.json(fax);
+  } catch (error) {
+    console.error("API Error:", error);
+    return NextResponse.json({ error: "Failed to create fax record" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\obigae\route.ts
+----------------------------------------------------------------
+import { NextResponse } from 'next/server';
+import puppeteer from 'puppeteer';
+import { prisma } from '@/lib/prisma';
+
+export async function POST(req: Request) {
+  try {
+    const { image, user_id } = await req.json();
+
+    // 1. 閾ｪ遉ｾ諠・ｱ繧貞叙蠕暦ｼ亥ｸｯ縺ｫ霈峨○繧区ュ蝣ｱ・・
+    const company = await prisma.company.findFirst();
+    const user = await prisma.user.findUnique({ where: { id: Number(user_id) } });
+
+    // 莨夂､ｾ諠・ｱ縺後↑縺・ｴ蜷医・繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ
+    const companyName = company?.name || "譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣";
+    const companyPhone = company?.phone || "03-0000-0000";
+    const companyAddress = company?.address || "譚ｱ莠ｬ驛ｽ貂玖ｰｷ蛹ｺ...";
+    const userName = user?.name || "";
+
+    // 2. HTML邨・∩遶九※・育判蜒上・荳翫↓縲∽ｸ矩Κ蝗ｺ螳壹・蟶ｯ繧帝㍾縺ｭ繧具ｼ・
+    // 荳矩Κ15%遞句ｺｦ繧堤區縺・ｸｯ縺ｧ髫縺励√◎縺薙↓閾ｪ遉ｾ諠・ｱ繧定ｼ峨○縺ｾ縺・
+    const htmlContent = `
+      <html>
+        <head>
+          <style>
+            body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+            .container { position: relative; width: 100%; height: 100%; }
+            
+            /* 蜈・・繝槭う繧ｽ繧ｯ逕ｻ蜒・*/
+            .mysoku-img { 
+              width: 100%; 
+              height: 100%; 
+              object-fit: contain; /* 繧｢繧ｹ繝壹け繝域ｯ斐ｒ邯ｭ謖√＠縺ｦ蜈ｨ菴薙ｒ陦ｨ遉ｺ */
+            }
+
+            /* 閾ｪ遉ｾ蟶ｯ・医が繝ｼ繝舌・繝ｬ繧､・・*/
+            .obi-band {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              width: 100%;
+              height: 12%; /* 荳矩Κ12%繧貞ｸｯ縺ｫ縺吶ｋ */
+              background-color: white;
+              border-top: 2px solid #333;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 0 40px;
+              box-sizing: border-box;
+              font-family: 'Helvetica', 'Arial', sans-serif;
+              z-index: 10;
+            }
+
+            .company-info h1 { margin: 0; font-size: 24px; color: #0044cc; }
+            .company-info p { margin: 5px 0 0; font-size: 14px; color: #555; }
+            .contact-info { text-align: right; }
+            .phone { font-size: 28px; font-weight: bold; color: #333; }
+            .user-name { font-size: 14px; margin-top: 5px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <img src="${image}" class="mysoku-img" />
+            
+            <div class="obi-band">
+              <div class="company-info">
+                <h1>${companyName}</h1>
+                <p>縲遅xx-xxxx ${companyAddress}</p>
+                <p>譚ｱ莠ｬ驛ｽ遏･莠・1)隨ｬ12345蜿ｷ</p>
+              </div>
+              <div class="contact-info">
+                <div class="phone">TEL: ${companyPhone}</div>
+                <div class="user-name">諡・ｽ・ ${userName}</div>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // 3. Puppeteer縺ｧPDF蛹・
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.setContent(htmlContent);
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+    await browser.close();
+
+    return new NextResponse(pdfBuffer, {
+      headers: { 'Content-Type': 'application/pdf' },
+    });
+
+  } catch (error) {
+    console.error("Obigae generation error:", error);
+    return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\ocr\route.ts
+----------------------------------------------------------------
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  // 窶ｻ 譛ｬ譚･縺ｯ縺薙％縺ｧ逕ｻ蜒剰ｧ｣譫舌ｒ陦後＞縺ｾ縺吶′縲｀VP蜍穂ｽ懃｢ｺ隱阪・縺溘ａ蝗ｺ螳壹ョ繝ｼ繧ｿ繧定ｿ斐＠縺ｾ縺・
+  // 縺薙ｌ縺ｫ繧医ｊ縲√ヵ繝ｭ繝ｳ繝医お繝ｳ繝峨・縲瑚・蜍募・蜉帙阪′讖溯・縺吶ｋ縺狗｢ｺ隱阪〒縺阪∪縺・
+  
+  // 逍台ｼｼ逧・↑繧ｦ繧ｧ繧､繝茨ｼ郁ｧ｣譫舌＠縺ｦ縺・ｋ繝輔Μ・・
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
+  return NextResponse.json({
+    fax_number: "03-1234-5678",
+    company_name: "譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν邂｡逅・,
+    company_phone: "03-9876-5432",
+    property_name: "繧ｰ繝ｩ繝ｳ繝峨Γ繧ｾ繝ｳ貂玖ｰｷ",
+    property_address: "譚ｱ莠ｬ驛ｽ貂玖ｰｷ蛹ｺ逾槫ｮｮ蜑・-2-3",
+    room_number: "301"
+  });
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\pdf\preview\route.ts
+----------------------------------------------------------------
+import { NextResponse } from "next/server";
+import puppeteer from "puppeteer"; // 窶ｻ npm install puppeteer 縺悟ｿ・ｦ√〒縺・
+
+export async function POST(req: Request) {
+  try {
+    const data = await req.json(); // 繝輔Ο繝ｳ繝医お繝ｳ繝峨°繧臥黄莉ｶ諠・ｱ縺ｪ縺ｩ繧貞女縺大叙繧・
+
+    // 1. 繝悶Λ繧ｦ繧ｶ繧定ｵｷ蜍・(Puppeteer)
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+    const page = await browser.newPage();
+
+    // 2. HTML繧ｳ繝ｳ繝・Φ繝・ｒ菴懈・ (蜀・ｦ倶ｾ晞ｼ譖ｸ縺ｮ繝・Φ繝励Ξ繝ｼ繝・
+    // 窶ｻ 譛ｬ譚･縺ｯReact繧ｳ繝ｳ繝昴・繝阪Φ繝医°繧臥函謌舌＠縺ｾ縺吶′縲｀VP縺ｧ縺ｯHTML譁・ｭ怜・繧貞沂繧∬ｾｼ縺ｿ縺ｾ縺・
+    const content = `
+      <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica', 'Arial', sans-serif; padding: 40px; }
+            h1 { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
+            .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .box { border: 1px solid #ccc; padding: 20px; margin-bottom: 20px; border-radius: 4px; }
+            .label { font-weight: bold; color: #555; font-size: 0.9em; }
+            .value { font-size: 1.2em; margin-bottom: 10px; }
+            .footer { margin-top: 50px; text-align: center; font-size: 0.8em; color: #777; }
+          </style>
+        </head>
+        <body>
+          <h1>蜀・ｦ倶ｾ晞ｼ譖ｸ</h1>
+          
+          <div class="header">
+            <div>
+              <p>騾∽ｿ｡譌･: ${new Date().toLocaleDateString()}</p>
+              <p>螳帛・: <strong>${data.company_name || "邂｡逅・ｼ夂､ｾ讒・}</strong></p>
+              <p>FAX: ${data.fax_number || ""}</p>
+            </div>
+            <div style="text-align: right;">
+              <p>騾∽ｿ｡蜈・ 譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣</p>
+              <p>諡・ｽ・ ${data.user_name || "諡・ｽ楢・}</p>
+            </div>
+          </div>
+
+          <div class="box">
+            <p class="label">荳玖ｨ倡黄莉ｶ縺ｮ蜀・ｦ九ｒ縺企｡倥＞縺・◆縺励∪縺吶・/p>
+            <div class="value">迚ｩ莉ｶ蜷搾ｼ・${data.property_name}</div>
+            <div class="value">菴乗園・・${data.property_address}</div>
+            <div class="value">驛ｨ螻狗分蜿ｷ・・${data.room_number || "譛ｪ螳・}</div>
+          </div>
+
+          <div class="box">
+            <p class="label">蜀・ｦ句ｸ梧悍譌･譎・/p>
+            <div class="value">
+              ${data.visit_date ? new Date(data.visit_date).toLocaleDateString() : "謖・ｮ壹↑縺・} 
+              ${data.visit_time || ""}
+            </div>
+          </div>
+          
+          <div class="footer">
+             譛ｬFAX縺ｯ縲軍ealEstate FAX縲阪ｈ繧願・蜍暮∽ｿ｡縺輔ｌ縺ｾ縺励◆縲・
+          </div>
+        </body>
+      </html>
+    `;
+
+    // 3. 繝壹・繧ｸ縺ｫ繧ｻ繝・ヨ縺励※PDF蛹・
+    await page.setContent(content);
+    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+
+    await browser.close();
+
+    // 4. PDF繝・・繧ｿ繧定ｿ斐☆
+    return new NextResponse(pdfBuffer, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'inline; filename="preview.pdf"',
+      },
+    });
+
+  } catch (error) {
+    console.error("PDF Generation Error:", error);
+    return NextResponse.json(
+      { error: "PDF generation failed" },
+      { status: 500 }
+    );
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\properties\route.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+// 迚ｩ莉ｶ荳隕ｧ蜿門ｾ暦ｼ育ｮ｡逅・ｼ夂､ｾ諠・ｱ繧ゆｸ邱偵↓蜿門ｾ暦ｼ・
+export async function GET() {
+  const properties = await prisma.property.findMany({
+    include: { company: true },
+  });
+  return NextResponse.json(properties);
+}
+
+// 迚ｩ莉ｶ譁ｰ隕冗匳骭ｲ
+export async function POST(req: Request) {
+  const data = await req.json();
+  const property = await prisma.property.create({ data });
+  return NextResponse.json(property);
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\send-fax\route.ts
+----------------------------------------------------------------
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma"; // [4] Prisma繧ｯ繝ｩ繧､繧｢繝ｳ繝・
+// import { generatePdf } from "@/services/pdfService"; // [5] 譌｢蟄倥・PDF逕滓・繧ｵ繝ｼ繝薙せ
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { 
+      fax_number, 
+      company_name, 
+      property_name, 
+      address, 
+      room_number,
+      visit_date,
+      visit_time,
+      company_phone,
+      // 繝ｭ繧ｰ繧､繝ｳ荳ｭ縺ｮ繝ｦ繝ｼ繧ｶ繝ｼID (螳滄圀縺ｯ繧ｻ繝・す繝ｧ繝ｳ縺九ｉ蜿門ｾ・
+      user_id = 1 
+    } = body;
+
+    // 1. PDF逕滓・ (譌｢蟄伜ｮ溯｣・[3][6] 繧貞茜逕ｨ)
+    // const pdfPath = await generatePdf(body); 
+    console.log("PDF generated for:", property_name);
+
+    // 2. FAX繝励Ο繝舌う繝縺ｸ騾∽ｿ｡ (API騾｣謳ｺ)
+    // 縺薙％縺ｧ InterFAX 繧・Twilio Programmable Fax 縺ｪ縺ｩ縺ｮAPI繧貞娼縺・
+    /*
+    const providerResponse = await fetch("https://api.fax-provider.com/send", {
+      method: "POST",
+      body: JSON.stringify({
+        destination: fax_number,
+        file: pdfPath
+      })
+    });
+    const sendResult = await providerResponse.json();
+    */
+    
+    // 繝｢繝・け騾∽ｿ｡邨先棡
+    const isSuccess = true; 
+    
+    // 3. DB縺ｸ騾∽ｿ｡螻･豁ｴ繧剃ｿ晏ｭ・[7] Fax繝｢繝・Ν螳夂ｾｩ縺ｫ蝓ｺ縺･縺・
+    const savedFax = await prisma.fax.create({
+      data: {
+        // [8] 蠢・医ヵ繧｣繝ｼ繝ｫ繝峨・蜑ｲ繧雁ｽ薙※
+        fax_number: fax_number,
+        sent_at: new Date(),
+        status: isSuccess ? "success" : "failed",
+        
+        // 繝ｪ繝ｬ繝ｼ繧ｷ繝ｧ繝ｳID縺ｮ隗｣豎ｺ (邁｡譏灘ｮ溯｣・ 譌｢蟄倥・莨夂､ｾ/迚ｩ莉ｶ縺後↑縺代ｌ縺ｰ菴懊ｋ or 邏蝉ｻ倥￠繝ｭ繧ｸ繝・け)
+        // 縺薙％縺ｧ縺ｯMVP縺ｨ縺励※縲∫ｮ｡逅・ｼ夂､ｾ繝ｻ迚ｩ莉ｶ繝槭せ繧ｿ縺ｸ縺ｮ邏蝉ｻ倥￠縺ｯ逵∫払縺励・
+        // 蠢・医・螟夜Κ繧ｭ繝ｼ蛻ｶ邏・′縺ゅｋ蝣ｴ蜷医・繝繝溘・ID縲√≠繧九＞縺ｯschema繧貞､画峩縺励※Optional縺ｫ縺吶ｋ遲峨・蟇ｾ蠢懊′蠢・ｦ・
+        // 莉雁屓縺ｯ繧ｷ繝ｼ繝峨ョ繝ｼ繧ｿ [9] 縺ｫ縺ゅｋID繧剃ｻｮ螳・
+        property: {
+          create: {
+            name: property_name,
+            address: address || "",
+            room_number: room_number || "",
+            company: {
+               connectOrCreate: {
+                 where: { id: 1 }, // 莉ｮ
+                 create: { name: company_name, phone: company_phone }
+               }
+            }
+          }
+        },
+        company: {
+            connect: { id: 1 } // 莉ｮ
+        },
+        user: {
+            connect: { id: user_id }
+        },
+        
+        notes: "蛻晄悄騾∽ｿ｡",
+        unlock_method: "" // 蠕後〒蜈･蜉・
+      }
+    });
+
+    // [10] 騾夂衍蜃ｦ逅・・蜻ｼ縺ｳ蜃ｺ縺・(髱槫酔譛・
+    // sendFaxNotification(savedFax.id);
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "FAX transmission started",
+      faxId: savedFax.id
+    });
+
+  } catch (error) {
+    console.error("FAX Send Error:", error);
+    return NextResponse.json({ success: false, error: "Failed to send FAX" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\settings\notifications\route.ts
+----------------------------------------------------------------
+import { prisma } from '@/lib/prisma';
+import { NextResponse } from 'next/server';
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+
+    // 險ｭ螳壹Ξ繧ｳ繝ｼ繝峨′蟄伜惠縺励↑縺・ｴ蜷医・菴懈・縺励∝ｭ伜惠縺吶ｌ縺ｰ譖ｴ譁ｰ
+    // (騾壼ｸｸ縺ｯSeed縺ｧ菴懈・縺励∪縺吶′縲∝ｿｵ縺ｮ縺溘ａupsert逧・↑蜍輔″繧偵＆縺帙∪縺・
+    const firstSetting = await prisma.settings.findFirst();
+    
+    let updated;
+    if (firstSetting) {
+      updated = await prisma.settings.update({
+        where: { id: firstSetting.id },
+        data: {
+          fax_success: body.fax_success,
+          fax_failure: body.fax_failure,
+          system_updates: body.system_updates,
+        },
+      });
+    } else {
+      updated = await prisma.settings.create({
+        data: {
+          fax_success: body.fax_success,
+          fax_failure: body.fax_failure,
+          system_updates: body.system_updates,
+        },
+      });
+    }
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\settings\system\route.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+// 繧ｷ繧ｹ繝・Β險ｭ螳壹・騾夂衍險ｭ螳壹・譖ｴ譁ｰ・・ettings繝・・繝悶Ν縺ｯ1繝ｬ繧ｳ繝ｼ繝峨・縺ｿ縺ｮ蜑肴署・・
+export async function PUT(req: Request) {
+  try {
+    const data = await req.json();
+    
+    // 譛蛻昴・1莉ｶ繧貞叙蠕励＠縺ｦID繧堤音螳夲ｼ医∪縺溘・ID:1蝗ｺ螳夲ｼ・
+    const first = await prisma.settings.findFirst();
+    if (!first) return NextResponse.json({ error: "Settings not found" }, { status: 404 });
+
+    const updated = await prisma.settings.update({
+      where: { id: first.id },
+      data: {
+        // 騾√ｉ繧後※縺阪◆繝・・繧ｿ縺ｫ蜷ｫ縺ｾ繧後ｋ繝輔ぅ繝ｼ繝ｫ繝峨・縺ｿ譖ｴ譁ｰ縺輔ｌ繧・
+        timezone: data.timezone,
+        language: data.language,
+        pdf_format: data.pdf_format,
+        fax_success_notify: data.fax_success_notify,
+        fax_failure_notify: data.fax_failure_notify
+      }
+    });
+    return NextResponse.json(updated);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\settings\route.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  try {
+    // 諡・ｽ楢・ｸ隕ｧ
+    const users = await prisma.user.findMany();
+    
+    // 閾ｪ遉ｾ諠・ｱ・域怙蛻昴・1莉ｶ繧貞叙蠕励√↑縺代ｌ縺ｰ繝繝溘・・・
+    let company = await prisma.company.findFirst();
+    if (!company) {
+      company = await prisma.company.create({
+        data: { name: "譛ｪ險ｭ螳・, address: "", phone: "" }
+      });
+    }
+
+    // 蛻ｩ逕ｨ迥ｶ豕・ｼ亥ｱ･豁ｴ縺ｮ繧ｫ繧ｦ繝ｳ繝茨ｼ・
+    const usage = {
+      total_faxes_sent: await prisma.fax.count(),
+      last_sent_at: (await prisma.fax.findFirst({ orderBy: { sent_at: 'desc' } }))?.sent_at
+    };
+
+    // 繧ｷ繧ｹ繝・Β險ｭ螳夲ｼ井ｻ雁屓縺ｯ蝗ｺ螳壼､縺ｾ縺溘・DB諡｡蠑ｵ蜿ｯ・・
+    const system = {
+      timezone: "Asia/Tokyo",
+      language: "ja",
+      pdf_format: "A4"
+    };
+
+    return NextResponse.json({ users, company, usage, system });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\users\[id]\route.ts
+----------------------------------------------------------------
+import { prisma } from '@/lib/prisma';
+import { NextResponse } from 'next/server';
+
+// 諡・ｽ楢・ュ蝣ｱ縺ｮ譖ｴ譁ｰ・亥錐蛻ｺ逕ｻ蜒上・逋ｻ骭ｲ縺ｪ縺ｩ・・
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: idString } = await params;
+  const id = Number(idString);
+
+  if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  try {
+    const body = await req.json();
+
+    // 譖ｴ譁ｰ蜃ｦ逅・
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        name: body.name,
+        email: body.email,
+        business_card: body.business_card, // Base64逕ｻ蜒上ョ繝ｼ繧ｿ
+      },
+    });
+
+    return NextResponse.json(updatedUser);
+  } catch (error) {
+    console.error("User update error:", error);
+    return NextResponse.json({ error: 'Failed to update user' }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\api\users\route.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const user = await prisma.user.create({
+      data: {
+        name: body.name,
+        email: body.email,
+        role: "agent"
+      }
+    });
+    return NextResponse.json(user);
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\layout.tsx
+----------------------------------------------------------------
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+
+// 繧ｿ繧､繝昴げ繝ｩ繝輔ぅ隕∽ｻｶ: Inter・郁ｦ句・縺・ 600縲∵悽譁・ 400・・
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  variable: "--font-inter",
+  display: "swap",
+})
+
+export const metadata: Metadata = {
+  title: "RealEstate FAX",
+  description: "荳榊虚逕｣讌ｭ蜍呎髪謠ｴ繝・・繝ｫ",
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="ja">
+      <body className={inter.className}>
+        {children}
+      </body>
+    </html>
+  )
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\app\page.tsx
+----------------------------------------------------------------
+"use client";
+
+import { useState } from "react";
+import { UploadScreen } from "@/components/screens/upload-screen";
+import { HistoryScreen } from "@/components/screens/history-screen";
+import { SettingsScreen } from "@/components/screens/settings-screen";
+import { Button } from "@/components/ui/button";
+import { FilePlus, History, Settings, LogOut } from "lucide-react";
+
+export default function Page() {
+  // 陦ｨ遉ｺ縺吶ｋ逕ｻ髱｢繧堤ｮ｡逅・☆繧九せ繝・・繝・('upload' | 'history' | 'settings')
+  const [screen, setScreen] = useState("upload");
+
+  // 笘・ｿｮ豁｣邂・園: 蠑墓焚縺ｪ縺励・髢｢謨ｰ縺ｨ縺励※螳夂ｾｩ
+  // FAX騾∽ｿ｡螳御ｺ・凾縺ｫ螻･豁ｴ逕ｻ髱｢縺ｸ驕ｷ遘ｻ縺輔○繧九◆繧√・髢｢謨ｰ
+  const handleAnalyzeComplete = () => {
+    setScreen("history");
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+      {/* 繝倥ャ繝繝ｼ繝ｻ繝翫ン繧ｲ繝ｼ繧ｷ繝ｧ繝ｳ */}
+      <header className="bg-white border-b sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight">RealEstate FAX</h1>
+            <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+              ENTERPRISE
+            </span>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-1">
+            <Button
+              variant={screen === "upload" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setScreen("upload")}
+            >
+              <FilePlus className="w-4 h-4 mr-2" />
+              譁ｰ隕丈ｽ懈・
+            </Button>
+            <Button
+              variant={screen === "history" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setScreen("history")}
+            >
+              <History className="w-4 h-4 mr-2" />
+              騾∽ｿ｡螻･豁ｴ
+            </Button>
+            <Button
+              variant={screen === "settings" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setScreen("settings")}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              險ｭ螳・            </Button>
+          </nav>
+
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" className="text-gray-500">
+              <LogOut className="w-4 h-4 mr-2" />
+              繝ｭ繧ｰ繧｢繧ｦ繝・            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* 繝｡繧､繝ｳ繧ｳ繝ｳ繝・Φ繝・*/}
+      <main className="max-w-5xl mx-auto p-6">
+        {screen === "upload" && (
+          // 縺薙％縺ｧ handleAnalyzeComplete 繧呈ｸ｡縺励※縺・∪縺・          <UploadScreen onAnalyzeComplete={handleAnalyzeComplete} />
+        )}
+        {screen === "history" && <HistoryScreen />}
+        {screen === "settings" && <SettingsScreen />}
+      </main>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\lib\notifications.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+
+// 繝繝溘・縺ｮ繝｡繝ｼ繝ｫ騾∽ｿ｡髢｢謨ｰ・域悽逡ｪ縺ｧ縺ｯSendGrid縺ｪ縺ｩ繧剃ｽｿ逕ｨ・・
+async function sendEmail({ to, subject, body }: { to: string; subject: string; body: string }) {
+  console.log("鐙 --- 繝｡繝ｼ繝ｫ騾∽ｿ｡繧ｷ繝溘Η繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ ---");
+  console.log(`To: ${to}`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Body: ${body}`);
+  console.log("-------------------------------------");
+}
+
+export async function sendFaxNotification(faxId: number) {
+  // FAX螻･豁ｴ縺ｨ縲・未騾｣縺吶ｋ繝ｦ繝ｼ繧ｶ繝ｼ繝ｻ邂｡逅・ｼ夂､ｾ繝ｻ迚ｩ莉ｶ諠・ｱ繧貞叙蠕・
+  const fax = await prisma.fax.findUnique({
+    where: { id: faxId },
+    include: { user: true, company: true, property: true },
+  });
+
+  // 險ｭ螳壽ュ蝣ｱ縺ｮ蜿門ｾ暦ｼ域怙蛻昴・1繝ｬ繧ｳ繝ｼ繝峨ｒ菴ｿ逕ｨ・・
+  const settings = await prisma.settings.findFirst();
+
+  if (!fax || !settings || !fax.user?.email) return;
+
+  // 1. 騾∽ｿ｡謌仙粥譎ゅ・騾夂衍
+  if (fax.status === "success" && settings.fax_success_notify) {
+    await sendEmail({
+      to: fax.user.email,
+      subject: "縲宣∽ｿ｡螳御ｺ・詮AX騾∽ｿ｡縺ｮ縺顔衍繧峨○",
+      body: `${fax.property?.name || '迚ｩ莉ｶ'} (${fax.company?.name || '邂｡逅・ｼ夂､ｾ'}) 縺ｸ縺ｮFAX騾∽ｿ｡縺梧・蜉溘＠縺ｾ縺励◆縲・n騾∽ｿ｡譌･譎・ ${fax.sent_at.toLocaleString()}`,
+    });
+  }
+
+  // 2. 騾∽ｿ｡螟ｱ謨玲凾縺ｮ騾夂衍
+  if (fax.status === "failed" && settings.fax_failure_notify) {
+    await sendEmail({
+      to: fax.user.email,
+      subject: "縲宣∽ｿ｡螟ｱ謨励詮AX騾∽ｿ｡繧ｨ繝ｩ繝ｼ",
+      body: `${fax.property?.name || '迚ｩ莉ｶ'} 縺ｸ縺ｮFAX騾∽ｿ｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲ゅ・繧､繧ｽ繧ｯ繧堤｢ｺ隱阪＠縺ｦ蜀埼√＠縺ｦ縺上□縺輔＞縲Ａ,
+    });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\lib\ocr-parser.ts
+----------------------------------------------------------------
+// 繝槭う繧ｽ繧ｯ迚ｹ譛峨・繝輔か繝ｼ繝槭ャ繝医°繧画ュ蝣ｱ繧呈栢縺榊・縺吶Ο繧ｸ繝・け
+export function parseMysokuText(fullText: string) {
+  // 1. FAX逡ｪ蜿ｷ縺ｮ謚ｽ蜃ｺ (縲熊AX: 03-xxxx-xxxx縲阪↑縺ｩ縺ｮ繝代ち繝ｼ繝ｳ)
+  // [1] FAX逡ｪ蜿ｷ謚ｽ蜃ｺ縺悟ｿ・ｦ・
+  const faxRegex = /(?:FAX|Fax|繝輔ぃ繝・け繧ｹ|・ｦ・｡・ｸ)[\s:・咯*(\d{2,4}[-繝ｼ\s]\d{2,4}[-繝ｼ\s]\d{3,4})/i;
+  const faxMatch = fullText.match(faxRegex);
+
+  // 2. 髮ｻ隧ｱ逡ｪ蜿ｷ縺ｮ謚ｽ蜃ｺ
+  const telRegex = /(?:TEL|Tel|髮ｻ隧ｱ|・ｴ・･・ｬ)[\s:・咯*(\d{2,4}[-繝ｼ\s]\d{2,4}[-繝ｼ\s]\d{3,4})/i;
+  const telMatch = fullText.match(telRegex);
+
+  // 3. 邂｡逅・ｼ夂､ｾ蜷阪・謗ｨ螳・(縲梧ｪ蠑丈ｼ夂､ｾ縲阪ｄ縲御ｸ榊虚逕｣縲阪ｒ蜷ｫ繧陦後ｒ謗｢縺咏ｰ｡譏薙Ο繧ｸ繝・け)
+  // [1] 邂｡逅・ｼ夂､ｾ蜷阪・謚ｽ蜃ｺ縺悟ｿ・ｦ・
+  const lines = fullText.split('\n');
+  const companyLine = lines.find(line => 
+    (line.includes('譬ｪ蠑丈ｼ夂､ｾ') || line.includes('譛蛾剞莨夂､ｾ') || line.includes('荳榊虚逕｣')) &&
+    line.length < 30 // 髟ｷ縺吶℃繧玖｡後・隱ｬ譏取枚縺ｮ蜿ｯ閭ｽ諤ｧ縺碁ｫ倥＞縺溘ａ髯､螟・
+  );
+
+  return {
+    fax_number: faxMatch ? faxMatch[2].replace(/[-繝ｼ\s]/g, '-') : "", // 繝上う繝輔Φ邨ｱ荳
+    company_phone: telMatch ? telMatch[2].replace(/[-繝ｼ\s]/g, '-') : "",
+    company_name: companyLine ? companyLine.trim() : "",
+    // 迚ｩ莉ｶ蜷阪ｄ菴乗園縺ｯOCR邊ｾ蠎ｦ縺ｫ萓晏ｭ倥☆繧九◆繧√√％縺薙〒縺ｯ蛟呵｣懊′隕九▽縺九ｉ縺ｪ縺代ｌ縺ｰ遨ｺ譁・ｭ・
+    property_name: "", 
+    address: ""
+  };
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\lib\ocr-service.ts
+----------------------------------------------------------------
+import Tesseract from 'tesseract.js';
+
+export interface OCRResult {
+  text: string;
+  faxNumber: string | null;
+  propertyName: string | null;
+}
+
+export async function analyzeImage(file: File): Promise<OCRResult> {
+  console.log("OCR隗｣譫宣幕蟋・", file.name);
+
+  // 1. Tesseract.js縺ｧ逕ｻ蜒上°繧画枚蟄励ｒ謚ｽ蜃ｺ (譌･譛ｬ隱・+ 闍ｱ隱・
+  const { data: { text } } = await Tesseract.recognize(
+    file,
+    'jpn+eng', // 譌･譛ｬ隱槭→闍ｱ隱槭・荳｡蟇ｾ蠢・
+    { 
+      logger: m => console.log(m) // 騾ｲ謐励Ο繧ｰ繧定｡ｨ遉ｺ
+    }
+  );
+
+  console.log("謚ｽ蜃ｺ繝・く繧ｹ繝・", text);
+
+  // 2. FAX逡ｪ蜿ｷ縺ｮ謚ｽ蜃ｺ繝ｭ繧ｸ繝・け (邁｡譏鍋噪縺ｪ豁｣隕剰｡ｨ迴ｾ)
+  // 縲熊AX縲阪ｄ縲熊縲阪・霑代￥縺ｫ縺ゅｋ縲・3-xxxx-xxxx縲阪・繧医≧縺ｪ繝代ち繝ｼ繝ｳ繧呈爾縺励∪縺・
+  const faxRegex = /(?:FAX|fax|Fax|F)[\s:・咯*(\d{2,4}[-\s]\d{2,4}[-\s]\d{3,4})/;
+  const phoneRegex = /(\d{2,4}[-\s]\d{2,4}[-\s]\d{3,4})/; // 豎守畑逧・↑髮ｻ隧ｱ逡ｪ蜿ｷ繝代ち繝ｼ繝ｳ
+  
+  let extractedFax = null;
+  
+  // 縺ｾ縺壹・譏守｢ｺ縺ｫ"FAX"縺ｨ譖ｸ縺・※縺ゅｋ邂・園繧呈爾縺・
+  const faxMatch = text.match(faxRegex);
+  if (faxMatch) {
+    extractedFax = faxMatch[1].replace(/\s/g, '-'); // 繧ｹ繝壹・繧ｹ繧偵ワ繧､繝輔Φ縺ｫ邨ｱ荳
+  } else {
+    // 縺ｪ縺代ｌ縺ｰ縲・崕隧ｱ逡ｪ蜿ｷ縺｣縺ｽ縺・ｂ縺ｮ繧呈爾縺呻ｼ育ｰ｡譏鍋沿・・
+    const phoneMatch = text.match(phoneRegex);
+    if (phoneMatch) {
+      extractedFax = phoneMatch.replace(/\s/g, '-');
+    }
+  }
+
+  // 3. 迚ｩ莉ｶ蜷阪・謚ｽ蜃ｺ繝ｭ繧ｸ繝・け (邁｡譏鍋沿)
+  // 縲後・・・繝ｳ繧ｷ繝ｧ繝ｳ縲阪ｄ縲後・・ン繝ｫ縲阪↑縺ｩ繧貞性繧陦後ｒ謗｢縺吶√≠繧九＞縺ｯ荳逡ｪ荳翫・螟ｧ縺阪↑譁・ｭ励ｒ謗｡逕ｨ縺吶ｋ縺ｪ縺ｩ
+  // 縺薙％縺ｧ縺ｯ繧ｷ繝ｳ繝励Ν縺ｫ縲後・繝ｳ繧ｷ繝ｧ繝ｳ縲阪後ン繝ｫ縲阪碁ず縲阪後ワ繧､繝・阪ｒ蜷ｫ繧陦後ｒ謚ｽ蜃ｺ縺励※縺ｿ縺ｾ縺・
+  const lines = text.split('\n');
+  let extractedProperty = null;
+  
+  for (const line of lines) {
+    if (line.match(/(繝槭Φ繧ｷ繝ｧ繝ｳ|繝薙Ν|繝上う繝л繝ｬ繧ｸ繝・Φ繧ｹ|繧｢繝代・繝・驍ｸ)/) && line.length < 30) {
+      extractedProperty = line.trim();
+      break; // 譛蛻昴↓隕九▽縺九▲縺溘ｂ縺ｮ繧呈治逕ｨ
+    }
+  }
+
+  return {
+    text,
+    faxNumber: extractedFax,
+    propertyName: extractedProperty
+  };
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\lib\pdf-generator.ts
+----------------------------------------------------------------
+import puppeteer from 'puppeteer';
+
+interface FaxData {
+  company_name: string;
+  fax_number: string;
+  property_name: string;
+  room_number?: string;
+  address?: string;
+  visit_date?: string;
+  visit_time?: string;
+  sender_name?: string;
+  sender_company?: string;
+  sender_phone?: string;
+}
+
+export async function generateFaxPdf(data: FaxData): Promise<Buffer> {
+  // 繝悶Λ繧ｦ繧ｶ襍ｷ蜍包ｼ郁ｻｽ驥丞喧縺ｮ縺溘ａ繝倥ャ繝峨Ξ繧ｹ繝｢繝ｼ繝会ｼ・
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+
+  // HTML繝・Φ繝励Ξ繝ｼ繝医・菴懈・・・ailwind CSS縺ｪ縺ｩ繧辰DN縺ｧ隱ｭ縺ｿ霎ｼ繧縺ｨ邯ｺ鮗励↓縺ｪ繧翫∪縺吶′縲∽ｻ雁屓縺ｯ繧､繝ｳ繝ｩ繧､繝ｳ繧ｹ繧ｿ繧､繝ｫ縺ｧ邁｡譏灘喧・・
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", sans-serif; padding: 40px; }
+        .header { text-align: center; border-bottom: 2px solid #333; margin-bottom: 30px; padding-bottom: 10px; }
+        .title { font-size: 24px; font-weight: bold; }
+        .date { text-align: right; font-size: 12px; margin-bottom: 20px; }
+        .recipient { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .recipient-fax { font-size: 14px; margin-bottom: 30px; }
+        .content { border: 1px solid #ccc; padding: 20px; background-color: #f9f9f9; }
+        .row { margin-bottom: 15px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+        .label { font-weight: bold; display: inline-block; width: 100px; }
+        .footer { margin-top: 50px; border-top: 1px solid #ccc; padding-top: 20px; display: flex; justify-content: space-between; }
+        .sender-box { border: 1px solid #333; padding: 15px; width: 250px; }
+      </style>
+    </head>
+    <body>
+      <div class="date">${new Date().toLocaleDateString('ja-JP')}</div>
+      
+      <div class="header">
+        <div class="title">蜀・ｦ倶ｾ晞ｼ譖ｸ</div>
+      </div>
+
+      <div class="recipient">${data.company_name} 蠕｡荳ｭ</div>
+      <div class="recipient-fax">FAX: ${data.fax_number}</div>
+
+      <p>諡晏蕪縲∬ｲｴ遉ｾ縺ｾ縺吶∪縺吶＃貂・・・縺薙→縺ｨ縺頑・縺ｳ逕ｳ縺嶺ｸ翫￡縺ｾ縺吶・br>
+      荳玖ｨ倡黄莉ｶ縺ｮ蜀・ｦ九ｒ縺企｡倥＞縺励◆縺上√＃騾｣邨｡縺・◆縺励∪縺励◆縲・/p>
+
+      <div class="content">
+        <div class="row">
+          <span class="label">迚ｩ莉ｶ蜷・</span>
+          <span>${data.property_name}</span>
+        </div>
+        <div class="row">
+          <span class="label">蜿ｷ螳､:</span>
+          <span>${data.room_number || '-'}</span>
+        </div>
+        <div class="row">
+          <span class="label">謇蝨ｨ蝨ｰ:</span>
+          <span>${data.address || '-'}</span>
+        </div>
+        <div class="row" style="margin-top: 20px;">
+          <span class="label">蟶梧悍譌･譎・</span>
+          <span style="font-weight:bold; font-size:1.1em;">
+            ${data.visit_date || '譛ｪ螳・} ${data.visit_time || ''}
+          </span>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div>
+          <p>縺頑焔謨ｰ縺ｧ縺吶′縲√＃遒ｺ隱阪・縺ｻ縺ｩ<br>繧医ｍ縺励￥縺企｡倥＞縺・◆縺励∪縺吶・/p>
+        </div>
+        <div class="sender-box">
+          <div style="font-size:12px; color:#555;">騾∽ｿ｡蜈・/div>
+          <div style="font-weight:bold;">${data.sender_company || '譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣'}</div>
+          <div>諡・ｽ・ ${data.sender_name || '諡・ｽ楢・}</div>
+          <div style="font-size:12px; margin-top:5px;">TEL: ${data.sender_phone || '03-xxxx-xxxx'}</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await page.setContent(htmlContent);
+  
+  // PDF逕滓・
+  const pdfBuffer = await page.pdf({
+    format: 'A4',
+    printBackground: true,
+    margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' }
+  });
+
+  await browser.close();
+  return Buffer.from(pdfBuffer);
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\lib\prisma.ts
+----------------------------------------------------------------
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = global as unknown as { prisma: PrismaClient }
+
+export const prisma = globalForPrisma.prisma || new PrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\lib\types.ts
+----------------------------------------------------------------
+export interface OcrData {
+    managementCompany?: string
+    faxNumber?: string
+    propertyName?: string
+    propertyAddress?: string
+    roomNumber?: string
+    visitDate?: string
+    visitTime?: string
+    selectedCard?: string
+    managementPhone?: string
+    // Add other fields as necessary
+    [key: string]: any
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\lib\utils.ts
+----------------------------------------------------------------
+
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs))
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\utils\notifications.ts
+----------------------------------------------------------------
+import { prisma } from "@/lib/prisma";
+
+// 繝繝溘・縺ｮ繝｡繝ｼ繝ｫ騾∽ｿ｡髢｢謨ｰ・亥ｮ滄圀縺ｯSendGrid縺ｪ縺ｩ繧剃ｽｿ縺・ｴ謇・・
+async function sendEmail({ to, subject, body }: { to: string; subject: string; body: string }) {
+  console.log("鐙 --- 繝｡繝ｼ繝ｫ騾∽ｿ｡繧ｷ繝溘Η繝ｬ繝ｼ繧ｷ繝ｧ繝ｳ ---");
+  console.log(`To: ${to}`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Body: ${body}`);
+  console.log("-----------------------------------");
+}
+
+export async function sendFaxNotification(faxId: number) {
+  // 騾∽ｿ｡縺輔ｌ縺檳AX諠・ｱ縺ｨ縲∫樟蝨ｨ縺ｮ險ｭ螳壹ｒ蜿門ｾ・
+  const fax = await prisma.fax.findUnique({
+    where: { id: faxId },
+    include: { user: true, company: true, property: true },
+  });
+
+  const settings = await prisma.settings.findFirst();
+
+  if (!fax || !settings) return;
+
+  // 謌仙粥騾夂衍・郁ｨｭ螳壹′ON縺ｮ蝣ｴ蜷医・縺ｿ・・
+  if (fax.status === "success" && settings.fax_success) {
+    await sendEmail({
+      to: fax.user.email,
+      subject: "縲宣∽ｿ｡螳御ｺ・大・隕倶ｾ晞ｼ譖ｸ縺ｮFAX騾∽ｿ｡縺悟ｮ御ｺ・＠縺ｾ縺励◆",
+      body: `${fax.property.name} (${fax.company.name}) 縺ｸ縺ｮFAX騾∽ｿ｡縺梧・蜉溘＠縺ｾ縺励◆縲・n\n邂｡逅・ｼ夂､ｾ縺ｸ髮ｻ隧ｱ騾｣邨｡繧偵♀鬘倥＞縺励∪縺吶・n髮ｻ隧ｱ逡ｪ蜿ｷ: ${fax.company.phone || "荳肴・"}`,
+    });
+  }
+
+  // 螟ｱ謨鈴夂衍・郁ｨｭ螳壹′ON縺ｮ蝣ｴ蜷医・縺ｿ・・
+  if (fax.status === "failed" && settings.fax_failure) {
+    await sendEmail({
+      to: fax.user.email,
+      subject: "縲宣∽ｿ｡螟ｱ謨励詮AX騾∽ｿ｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆",
+      body: `${fax.property.name} (${fax.company.name}) 縺ｸ縺ｮFAX騾∽ｿ｡縺悟､ｱ謨励＠縺ｾ縺励◆縲・n險ｭ螳壹ｄ逡ｪ蜿ｷ繧堤｢ｺ隱阪＠縺ｦ蜀埼√＠縺ｦ縺上□縺輔＞縲Ａ,
+    });
+  }
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\complete-screen.tsx
+----------------------------------------------------------------
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle, Phone, Home, Save } from "lucide-react";
+
+interface CompleteScreenProps {
+  data: any; // 騾∽ｿ｡縺励◆繝・・繧ｿ
+  onReset: () => void;
+}
+
+export function CompleteScreen({ data, onReset }: CompleteScreenProps) {
+  const [unlockMethod, setUnlockMethod] = useState("");
+  const [notes, setNotes] = useState("");
+  const [isSaved, setIsSaved] = useState(false);
+
+  const handleSave = async () => {
+    // API蜻ｼ縺ｳ蜃ｺ縺励Δ繝・け: 螻･豁ｴ縺ｮ譖ｴ譁ｰ・・UT /api/faxes/{id}・・
+    console.log("Saving notes:", { unlockMethod, notes });
+    setIsSaved(true);
+    // 螳滄圀縺ｫ縺ｯ縺薙％縺ｧAPI繧貞娼縺・
+    // await fetch(`/api/faxes/${data.id}`, { method: 'PUT', body: ... })
+  };
+
+  return (
+    <div className="max-w-xl mx-auto mt-10 text-center space-y-8 animate-in zoom-in-95 duration-500">
+
+      <div className="flex justify-center">
+        <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
+          <CheckCircle className="h-10 w-10 text-green-600" />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-3xl font-bold mb-2">FAX騾∽ｿ｡螳御ｺ・/h2>
+        <p className="text-gray-500">
+          邂｡逅・ｼ夂､ｾ縺ｫ蜀・ｦ倶ｾ晞ｼ譖ｸ繧帝∽ｿ｡縺励∪縺励◆縲・
+        </p>
+      </div>
+
+      <Card className="bg-blue-50 border-blue-100 text-left shadow-sm">
+        <CardContent className="p-6">
+          <h3 className="font-semibold flex items-center gap-2 mb-3 text-blue-800 text-lg">
+            <Phone className="h-5 w-5" />
+            谺｡縺ｮ繧ｹ繝・ャ繝暦ｼ夂ｮ｡逅・ｼ夂､ｾ縺ｸ縺ｮ髮ｻ隧ｱ遒ｺ隱・
+          </h3>
+          <p className="text-sm text-blue-900 mb-4">
+            邂｡逅・ｼ夂､ｾ縺ｫ髮ｻ隧ｱ繧偵＠縺ｦ蛻ｰ逹遒ｺ隱阪→縲∬ｩｳ縺励＞隗｣骭譁ｹ豕包ｼ医く繝ｼ繝懊ャ繧ｯ繧ｹ逡ｪ蜿ｷ縺ｪ縺ｩ・峨ｒ閨槭″蜃ｺ縺励∪縺励ｇ縺・・
+          </p>
+
+          <div className="bg-white p-3 rounded border border-blue-100 mb-4">
+            <p className="text-xs text-gray-500">邂｡逅・ｼ夂､ｾ髮ｻ隧ｱ逡ｪ蜿ｷ</p>
+            <p className="text-xl font-bold text-blue-900">{data.company_phone || "・磯崕隧ｱ逡ｪ蜿ｷ縺ｪ縺暦ｼ・}</p>
+            <p className="text-sm text-gray-700">{data.company_name}</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">隗｣骭譁ｹ豕・(KB逡ｪ蜿ｷ縺ｪ縺ｩ)</label>
+              <textarea
+                className="w-full p-3 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="萓具ｼ夂樟蝨ｰKB 1234縲∫ｮ｡逅・ｮ､縺ｧ蜿励￠蜿悶ｊ"
+                rows={2}
+                value={unlockMethod}
+                onChange={(e) => setUnlockMethod(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-500 uppercase">豕ｨ諢丈ｺ矩・・繝｡繝｢</label>
+              <textarea
+                className="w-full p-3 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="萓具ｼ壹が繝ｼ繝医Ο繝・け縺ｪ縺励・ｧ占ｻ顔ｦ∵ｭ｢"
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <Button
+              size="sm"
+              variant={isSaved ? "secondary" : "default"}
+              className={isSaved ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-blue-600"}
+              onClick={handleSave}
+            >
+              {isSaved ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" /> 菫晏ｭ倥＠縺ｾ縺励◆
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" /> 繝｡繝｢繧剃ｿ晏ｭ・
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="pt-2">
+        <Button onClick={onReset} size="lg" className="w-full sm:w-auto" variant="outline">
+          <Home className="mr-2 h-4 w-4" />
+          繝帙・繝縺ｫ謌ｻ繧・
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\completion-screen.tsx
+----------------------------------------------------------------
+"use client"
+
+import { useState } from "react"
+import { CheckCircle, Phone, Save, Printer, Image as ImageIcon } from "lucide-react"
+
+interface CompletionScreenProps {
+  faxData: any
+  onSave: (data: { unlock_method: string, notes: string }) => void
+  onSkip: () => void
+}
+
+export function CompletionScreen({ faxData, onSave, onSkip }: CompletionScreenProps) {
+  const [unlockMethod, setUnlockMethod] = useState("")
+  const [notes, setNotes] = useState("")
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[80vh] p-4">
+      <div className="w-full max-w-2xl bg-[var(--bg)] rounded-[16px] shadow-xl border border-[var(--border)] overflow-hidden">
+
+        {/* Step 1: 繝倥ャ繝繝ｼ */}
+        <div className="bg-green-600 p-8 text-center text-white relative overflow-hidden">
+          <div className="relative z-10">
+            <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/30">
+              <CheckCircle size={32} className="text-white" />
+            </div>
+            <h1 className="text-2xl font-bold mb-1 tracking-tight">邂｡逅・ｼ夂､ｾ縺ｫ騾∽ｿ｡縺励∪縺励◆</h1>
+            <p className="text-green-100 font-medium opacity-90">FAX騾∽ｿ｡螳御ｺ・/p>
+          </div>
+        </div>
+
+        <div className="p-8 space-y-8">
+
+          {/* Step 2: 髮ｻ隧ｱ遒ｺ隱阪ヵ繝ｭ繝ｼ */}
+          <div className="bg-blue-50 border border-blue-100 rounded-[12px] p-6 relative">
+            <div className="absolute -top-3 left-6 bg-[var(--primary)] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+              Next Action
+            </div>
+            <h2 className="text-blue-900 font-bold text-lg mb-2 mt-1">
+              邂｡逅・ｼ夂､ｾ縺ｸ縺ｮ髮ｻ隧ｱ遒ｺ隱・
+            </h2>
+            <p className="text-sm text-blue-700/80 mb-6 leading-relaxed">
+              邂｡逅・ｼ夂､ｾ縺ｫ髮ｻ隧ｱ繧偵＠縺ｦ縲・span className="font-bold border-b border-blue-300">隗｣骭譁ｹ豕・/span>繧・span className="font-bold border-b border-blue-300">豕ｨ諢丈ｺ矩・/span>繧堤｢ｺ隱阪＠縺ｾ縺励ｇ縺・・
+            </p>
+
+            <div className="flex items-center justify-between bg-white p-4 rounded-[10px] border border-blue-200 shadow-sm group">
+              <div>
+                <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase">邂｡逅・ｼ夂､ｾ髮ｻ隧ｱ逡ｪ蜿ｷ</p>
+                <p className="text-3xl font-mono font-bold text-slate-800 tracking-tighter group-hover:text-[var(--primary)] transition-colors">
+                  {faxData.company_phone || "03-9876-5432"}
+                </p>
+                <p className="text-xs text-slate-500 mt-1 font-bold">
+                  {faxData.company_name}
+                </p>
+              </div>
+              <a href={`tel:${faxData.company_phone}`} className="bg-blue-100 text-[var(--primary)] p-3 rounded-full hover:bg-[var(--primary)] hover:text-white transition-all shadow-sm">
+                <Phone size={24} />
+              </a>
+            </div>
+          </div>
+
+          {/* 蜈･蜉帙ヵ繧ｩ繝ｼ繝 */}
+          <div className="space-y-4">
+            <div>
+              <label className="label-base">隗｣骭譁ｹ豕・/label>
+              <input
+                className="input-base bg-slate-50 focus:bg-white"
+                placeholder="萓具ｼ壽囓險ｼ逡ｪ蜿ｷ1234縲・嵯縺ｯ迴ｾ蝨ｰ繝懊ャ繧ｯ繧ｹ..."
+                value={unlockMethod}
+                onChange={(e) => setUnlockMethod(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label-base">豕ｨ諢丈ｺ矩・・繝｡繝｢</label>
+              <textarea
+                className="input-base h-24 py-3 resize-none bg-slate-50 focus:bg-white"
+                placeholder="萓具ｼ壹・繝・ヨ荳榊庄縲・髫弱↑縺ｮ縺ｧ髫取ｮｵ豕ｨ諢・.."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* 笘・ｿｽ蜉: 蟶ｯ譖ｿ縺亥魂蛻ｷ繧ｻ繧ｯ繧ｷ繝ｧ繝ｳ・・譫夂岼縺九ｉ遘ｻ蜍包ｼ・*/}
+          <div className="border-t border-dashed border-slate-200 pt-6">
+            <div className="bg-gradient-to-r from-slate-50 to-white border border-slate-200 rounded-[12px] p-5 flex items-center justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-white rounded-full text-slate-600 border border-slate-200 shadow-sm shrink-0">
+                  <Printer size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm mb-1">繝槭う繧ｽ繧ｯ縺ｮ蟶ｯ繧定・遉ｾ逕ｨ縺ｫ蟾ｮ縺玲崛縺医※蜊ｰ蛻ｷ</h3>
+                  <p className="text-slate-500 text-xs leading-relaxed">
+                    閾ｪ遉ｾ繝ｭ繧ｴ繧・ｸｯ縺ｫ蟾ｮ縺玲崛縺医◆迥ｶ諷九〒蜊ｰ蛻ｷ縺励・br />縺雁ｮ｢讒倥∈縺頑ｸ｡縺励〒縺阪∪縺吶・
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => window.print()}
+                className="btn-secondary h-[40px] text-sm shrink-0 whitespace-nowrap"
+              >
+                <ImageIcon size={16} />
+                蜊ｰ蛻ｷ縺吶ｋ
+              </button>
+            </div>
+          </div>
+
+          {/* 繧｢繧ｯ繧ｷ繝ｧ繝ｳ繝懊ち繝ｳ */}
+          <div className="flex gap-4 pt-2">
+            <button
+              onClick={onSkip}
+              className="px-6 py-4 text-[var(--muted)] font-bold hover:bg-slate-50 rounded-[10px] transition-colors text-sm"
+            >
+              繧ｹ繧ｭ繝・・
+            </button>
+            <button
+              onClick={() => onSave({ unlock_method: unlockMethod, notes })}
+              className="flex-1 btn-primary h-[56px] bg-slate-900 hover:bg-slate-800 shadow-lg"
+            >
+              <Save size={18} />
+              菫晏ｭ倥＠縺ｦ螳御ｺ・
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\confirm-screen.tsx
+----------------------------------------------------------------
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Send, ArrowLeft } from "lucide-react";
+
+interface ConfirmScreenProps {
+  data: any;
+  onBack: () => void;
+  onComplete: () => void;
+}
+
+export function ConfirmScreen({ data, onBack, onComplete }: ConfirmScreenProps) {
+  const [loading, setLoading] = useState(false);
+
+  // 騾∽ｿ｡繝懊ち繝ｳ縺梧款縺輔ｌ縺溘→縺阪・蜃ｦ逅・  const handleSend = async () => {
+    // 遒ｺ隱阪ム繧､繧｢繝ｭ繧ｰ
+    if (!confirm("譛ｬ蠖薙↓FAX繧帝∽ｿ｡縺励∪縺吶°・・)) return;
+
+    setLoading(true);
+    try {
+      console.log("騾∽ｿ｡繝懊ち繝ｳ繧ｯ繝ｪ繝・け・哂PI繧貞他縺ｳ蜃ｺ縺励∪縺・..");
+
+      // 笘・％縺薙′驥崎ｦ・ｼ・api/faxes 縺ｫ繝・・繧ｿ繧帝√ｋ
+      const res = await fetch("/api/faxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        console.log("騾∽ｿ｡謌仙粥・・);
+        alert("騾∽ｿ｡縺悟ｮ御ｺ・＠縺ｾ縺励◆・￣DF縺檎函謌舌＆繧後∪縺励◆縲・);
+        onComplete(); // 螳御ｺ・判髱｢縺ｸ遘ｻ蜍・      } else {
+        const err = await res.json();
+        console.error("繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ:", err);
+        alert("騾∽ｿ｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲ゅし繝ｼ繝舌・繝ｭ繧ｰ繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・);
+      }
+    } catch (error) {
+      console.error("騾壻ｿ｡繧ｨ繝ｩ繝ｼ:", error);
+      alert("騾壻ｿ｡繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 p-6 animate-in fade-in zoom-in duration-300">
+      <div className="flex items-center gap-4 mb-6">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> 謌ｻ繧・        </Button>
+        <h2 className="text-2xl font-bold">騾∽ｿ｡蜀・ｮｹ縺ｮ遒ｺ隱・/h2>
+      </div>
+
+      <div className="bg-white p-6 rounded-lg border shadow-sm space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm text-gray-500">螳帛・・育ｮ｡逅・ｼ夂､ｾ・・/label>
+            <p className="font-medium">{data.company_name || "譛ｪ蜈･蜉・}</p>
+          </div>
+          <div>
+            <label className="text-sm text-gray-500">FAX逡ｪ蜿ｷ</label>
+            <p className="font-medium text-xl">{data.fax_number || "譛ｪ蜈･蜉・}</p>
+          </div>
+          <div className="col-span-2">
+            <label className="text-sm text-gray-500">迚ｩ莉ｶ蜷・/label>
+            <p className="font-medium">{data.property_name || "譛ｪ蜈･蜉・}</p>
+          </div>
+        </div>
+
+        <div className="pt-6 border-t flex justify-end">
+          <Button
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto"
+            onClick={handleSend}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 騾∽ｿ｡荳ｭ...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" /> FAX繧帝∽ｿ｡縺吶ｋ
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\dashboard-screen.tsx
+----------------------------------------------------------------
+"use client";
+
+import { useState } from "react";
+
+export function DashboardScreen() {
+  const [sending, setSending] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false); // OCR隗｣譫蝉ｸｭ繝輔Λ繧ｰ
+  const [sentFax, setSentFax] = useState<any>(null);
+
+  // 笘・ｿｽ蜉: 逕ｻ蜒上ョ繝ｼ繧ｿ・・ase64・峨→蟶ｯ譖ｿ縺医ヵ繝ｩ繧ｰ
+  const [imageParam, setImageParam] = useState<string>("");
+  const [useBand, setUseBand] = useState(true);
+
+  // 繝輔か繝ｼ繝縺ｮ迥ｶ諷狗ｮ｡逅・
+  const [form, setForm] = useState({
+    property_id: "",
+    company_id: "",
+    user_id: "",
+    fax_number: "",
+    notes: "",
+    ocr_property_name: "",
+    ocr_company_name: "",
+  });
+
+  // OCR螳溯｡・& 逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ髢｢謨ｰ
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    // 繝輔ぃ繧､繝ｫ縺碁∈謚槭＆繧後※縺・↑縺・ｴ蜷医・菴輔ｂ縺励↑縺・
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    // 笘・㍾隕・ 驟榊・縺ｮ逡ｪ逶ｮ繧呈欠螳壹＠縺ｦ繝輔ぃ繧､繝ｫ蜊倅ｽ薙ｒ蜿門ｾ・
+    const file = e.target.files.item(0);
+
+    setAnalyzing(true);
+
+    // 1. 繝励Ξ繝薙Η繝ｼ縺ｨPDF蝓九ａ霎ｼ縺ｿ逕ｨ縺ｫ逕ｻ蜒上ｒ隱ｭ縺ｿ霎ｼ繧
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) {
+        setImageParam(ev.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+
+    // 2. OCR隗｣譫舌・縺溘ａ縺ｫ繧ｵ繝ｼ繝舌・縺ｸ騾∽ｿ｡
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // 謚ｽ蜃ｺ邨先棡繧偵ヵ繧ｩ繝ｼ繝縺ｫ閾ｪ蜍募・蜉・
+        setForm(prev => ({
+          ...prev,
+          fax_number: data.extracted.fax_number || prev.fax_number,
+          ocr_property_name: data.extracted.property_name || prev.ocr_property_name,
+          ocr_company_name: data.extracted.company_name || prev.ocr_company_name,
+          notes: prev.notes + (prev.notes ? "\n" : "") + "縲唇CR隱ｭ蜿悶ユ繧ｭ繧ｹ繝医曾n" + data.text.slice(0, 100) + "...",
+        }));
+        alert("逕ｻ蜒上ｒ隗｣譫舌＠縺ｾ縺励◆・√ヵ繧ｩ繝ｼ繝繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・);
+      } else {
+        alert("OCR隗｣譫舌↓螟ｱ謨励＠縺ｾ縺励◆");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("騾壻ｿ｡繧ｨ繝ｩ繝ｼ");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
+  // PDF繝励Ξ繝薙Η繝ｼ讖溯・・育判蜒城∽ｿ｡蟇ｾ蠢懃沿・・
+  async function handlePreview() {
+    if (!form.fax_number) return alert("FAX逡ｪ蜿ｷ繧貞・蜉帙＠縺ｦ縺上□縺輔＞");
+
+    try {
+      const res = await fetch("/api/pdf/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          ocr_company_name: form.ocr_company_name || "繝励Ξ繝薙Η繝ｼ邂｡逅・ｼ夂､ｾ",
+          ocr_property_name: form.ocr_property_name || "繝励Ξ繝薙Η繝ｼ迚ｩ莉ｶ",
+          // 笘・％縺薙〒逕ｻ蜒上ｒ騾∽ｿ｡縺励∪縺・
+          image: imageParam,
+          use_band: useBand,
+        }),
+      });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, "_blank");
+      } else {
+        alert("PDF逕滓・縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("繝励Ξ繝薙Η繝ｼ逕滓・繧ｨ繝ｩ繝ｼ");
+    }
+  }
+
+  // FAX騾∽ｿ｡讖溯・
+  async function handleSend() {
+    if (!form.user_id) return alert("諡・ｽ楢・D・域焚蛟､・峨ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞");
+    setSending(true);
+    try {
+      const res = await fetch("/api/faxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property_id: Number(form.property_id) || 0,
+          company_id: Number(form.company_id) || 0,
+          user_id: Number(form.user_id),
+          fax_number: form.fax_number,
+          notes: form.notes,
+          status: "success",
+          ocr_property_name: form.ocr_property_name || "蜷咲ｧｰ譛ｪ螳夂黄莉ｶ",
+          ocr_company_name: form.ocr_company_name || "蜷咲ｧｰ譛ｪ螳夂ｮ｡逅・ｼ夂､ｾ",
+        }),
+      });
+      if (res.ok) {
+        setSentFax(await res.json());
+        alert("騾∽ｿ｡・井ｿ晏ｭ假ｼ峨′螳御ｺ・＠縺ｾ縺励◆・・);
+      } else {
+        const err = await res.json();
+        alert("騾∽ｿ｡螟ｱ謨・ " + (err.error || "繝・・繧ｿ繝吶・繧ｹ繧ｨ繝ｩ繝ｼ"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("騾壻ｿ｡繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-6">
+      <h2 className="text-xl font-bold text-gray-800 border-b pb-2">統 譁ｰ隕洲AX菴懈・</h2>
+
+      {/* 繝輔ぃ繧､繝ｫ繧｢繝・・繝ｭ繝ｼ繝峨お繝ｪ繧｢ */}
+      <div className="bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg p-6 text-center">
+        <p className="text-blue-800 font-bold mb-2">塘 繝槭う繧ｽ繧ｯ逕ｻ蜒上ｒ繧｢繝・・繝ｭ繝ｼ繝・/p>
+        <p className="text-sm text-blue-600 mb-4">逕ｻ蜒上°繧宇AX逡ｪ蜿ｷ繧・黄莉ｶ蜷阪ｒ閾ｪ蜍輔〒隱ｭ縺ｿ蜿悶ｊ縺ｾ縺・/p>
+
+        <label className="cursor-pointer bg-white text-blue-600 font-bold py-2 px-6 rounded border border-blue-200 shadow-sm hover:bg-blue-50 transition-colors inline-block">
+          {analyzing ? "剥 隗｣譫蝉ｸｭ..." : "唐 繝輔ぃ繧､繝ｫ繧帝∈謚・}
+          <input
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileUpload}
+            disabled={analyzing}
+          />
+        </label>
+      </div>
+
+      {/* 笘・ｿｽ蜉: 隱ｭ縺ｿ霎ｼ縺ｿ逕ｻ蜒上・繝励Ξ繝薙Η繝ｼ陦ｨ遉ｺ繧ｨ繝ｪ繧｢ */}
+      {imageParam && (
+        <div className="mt-4 p-4 border rounded bg-gray-50">
+          <p className="text-sm font-bold text-gray-700 mb-2">胴 隱ｭ縺ｿ霎ｼ縺ｿ逕ｻ蜒冗｢ｺ隱・/p>
+          <div className="flex items-start gap-4">
+            <img src={imageParam} alt="Preview" className="h-32 w-auto object-contain border bg-white" />
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer mb-2">
+                <input
+                  type="checkbox"
+                  checked={useBand}
+                  onChange={(e) => setUseBand(e.target.checked)}
+                  className="w-5 h-5 text-blue-600"
+                />
+                <span className="font-bold text-blue-800">笨ｨ 閾ｪ遉ｾ蟶ｯ縺ｫ蟾ｮ縺玲崛縺医ｋ (繝倥ャ繝繝ｼ閾ｪ蜍慕函謌・</span>
+              </label>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                ON縺ｫ縺吶ｋ縺ｨ縲√メ繝ｩ繧ｷ荳企Κ・医・繝・ム繝ｼ・峨ｒ繧ｫ繝・ヨ縺励※<br />
+                閾ｪ遉ｾ縺ｮ繝ｭ繧ｴ繝ｻ騾｣邨｡蜈医↓鄂ｮ縺肴鋤縺医◆PDF繧剃ｽ懈・縺励∪縺吶・
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 繝輔か繝ｼ繝蜈･蜉帙お繝ｪ繧｢ */}
+      <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700">迚ｩ莉ｶ蜷・(OCR)</label>
+            <input
+              type="text"
+              className="w-full border p-2 rounded bg-gray-50"
+              placeholder="萓・ 繧ｵ繝ｳ繝励Ν繝槭Φ繧ｷ繝ｧ繝ｳ"
+              value={form.ocr_property_name}
+              onChange={(e) => setForm({ ...form, ocr_property_name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700">邂｡逅・ｼ夂､ｾ蜷・(OCR)</label>
+            <input
+              type="text"
+              className="w-full border p-2 rounded bg-gray-50"
+              placeholder="萓・ 繧ｵ繝ｳ繝励Ν邂｡逅・ｼ夂､ｾ"
+              value={form.ocr_company_name}
+              onChange={(e) => setForm({ ...form, ocr_company_name: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700">FAX逡ｪ蜿ｷ <span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            className="w-full border p-2 rounded text-lg font-mono"
+            placeholder="03-0000-0000"
+            value={form.fax_number}
+            onChange={(e) => setForm({ ...form, fax_number: e.target.value })}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700">諡・ｽ楢・D <span className="text-red-500">*</span></label>
+          <input
+            type="number"
+            className="w-full border p-2 rounded"
+            placeholder="萓・ 1"
+            value={form.user_id}
+            onChange={(e) => setForm({ ...form, user_id: e.target.value })}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700">蛯呵・・繝｡繝｢</label>
+          <textarea
+            className="w-full border p-2 rounded"
+            placeholder="骰ｵ縺ｮ蝣ｴ謇繧・ｳｨ諢丈ｺ矩・↑縺ｩ"
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+        </div>
+      </div>
+
+      {sentFax && (
+        <div className="bg-green-50 p-4 rounded border border-green-200 text-green-800">
+          笨・FAX螻･豁ｴ繧剃ｿ晏ｭ倥＠縺ｾ縺励◆ (ID: {sentFax.id})
+        </div>
+      )}
+
+      <div className="flex gap-4 mt-6">
+        <button
+          onClick={handlePreview}
+          className="flex-1 bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors shadow-sm"
+          type="button"
+        >
+          早・・PDF繝励Ξ繝薙Η繝ｼ
+        </button>
+
+        <button
+          onClick={handleSend}
+          disabled={sending}
+          className="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 shadow-sm"
+        >
+          {sending ? "騾∽ｿ｡荳ｭ..." : "蕩 FAX騾∽ｿ｡ (菫晏ｭ・"}
+        </button>
+      </div>
+
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\edit-screen.tsx
+----------------------------------------------------------------
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { ArrowLeft, ArrowRight, Save } from "lucide-react";
+
+interface EditScreenProps {
+  initialData: any;
+  onBack: () => void;
+  onNext: (data: any) => void;
+}
+
+export function EditScreen({ initialData, onBack, onNext }: EditScreenProps) {
+  // 笘・ｿｮ豁｣: 繝・・繧ｿ讒矩繧偵ヵ繝ｩ繝・ヨ縺ｫ蜷医ｏ縺帙※隱ｭ縺ｿ霎ｼ縺ｿ縺ｾ縺・  // (initialData.ocrData.xxx 縺ｧ縺ｯ縺ｪ縺・initialData.xxx)
+  const [formData, setFormData] = useState({
+    company_name: initialData?.company_name || "",
+    fax_number: initialData?.fax_number || "",
+    property_name: initialData?.property_name || "",
+    room_number: initialData?.room_number || "",
+    // 蠢・ｦ√↓蠢懊§縺ｦ莉悶・繝輔ぅ繝ｼ繝ｫ繝峨ｂ蛻晄悄蛹・    address: initialData?.address || "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleNext = () => {
+    // 邱ｨ髮・＠縺溘ョ繝ｼ繧ｿ繧定ｦｪ繧ｳ繝ｳ繝昴・繝阪Φ繝育ｵ檎罰縺ｧ谺｡縺ｮ逕ｻ髱｢縺ｸ貂｡縺・    // 蜈・・繝・・繧ｿ(initialData)縺ｫ縲∫ｷｨ髮・・螳ｹ(formData)繧剃ｸ頑嶌縺阪＠縺ｦ貂｡縺・    onNext({ ...initialData, ...formData });
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> 逕ｻ蜒城∈謚槭↓謌ｻ繧・        </Button>
+        <h2 className="text-2xl font-bold">謚ｽ蜃ｺ邨先棡縺ｮ邱ｨ髮・/h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 蟾ｦ蛛ｴ: 邱ｨ髮・ヵ繧ｩ繝ｼ繝 */}
+        <Card className="p-6 space-y-4 md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="company_name">邂｡逅・ｼ夂､ｾ蜷・/Label>
+              <Input
+                id="company_name"
+                name="company_name"
+                value={formData.company_name}
+                onChange={handleChange}
+                placeholder="萓・ 譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fax_number" className="text-blue-600 font-bold">FAX逡ｪ蜿ｷ (蠢・・</Label>
+              <Input
+                id="fax_number"
+                name="fax_number"
+                value={formData.fax_number}
+                onChange={handleChange}
+                placeholder="03-xxxx-xxxx"
+                className="border-blue-200 bg-blue-50 font-bold"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="property_name">迚ｩ莉ｶ蜷・/Label>
+              <Input
+                id="property_name"
+                name="property_name"
+                value={formData.property_name}
+                onChange={handleChange}
+                placeholder="萓・ 繧ｵ繝ｳ繝励Ν繝槭Φ繧ｷ繝ｧ繝ｳ"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="room_number">驛ｨ螻狗分蜿ｷ</Label>
+              <Input
+                id="room_number"
+                name="room_number"
+                value={formData.room_number}
+                onChange={handleChange}
+                placeholder="萓・ 101"
+              />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="flex justify-end pt-4">
+        <Button onClick={handleNext} size="lg" className="bg-blue-600 hover:bg-blue-700">
+          谺｡縺ｸ・医・繝ｬ繝薙Η繝ｼ・・<ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\history-screen.tsx
+----------------------------------------------------------------
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Search, Copy, RefreshCw, Loader2 } from "lucide-react";
+
+// API縺九ｉ霑斐▲縺ｦ縺上ｋ繝・・繧ｿ縺ｮ蝙句ｮ夂ｾｩ
+interface FaxRecord {
+  id: number;
+  sent_at: string;
+  fax_number: string;
+  status: string;
+  unlock_method: string | null;
+  notes: string | null;
+  user: { name: string };
+  property: { name: string };
+  company: { name: string };
+}
+
+export function HistoryScreen() {
+  const [records, setRecords] = useState<FaxRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 繝輔ぅ繝ｫ繧ｿ繝ｼ逕ｨ繧ｹ繝・・繝・  const [filters, setFilters] = useState({
+    date: "",
+    keyword: "" // 邁｡譏鍋噪縺ｪ繧ｭ繝ｼ繝ｯ繝ｼ繝画､懃ｴ｢・井ｻ雁屓縺ｯ繝輔Ο繝ｳ繝医お繝ｳ繝峨〒繝輔ぅ繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ縺励※繧０K・・  });
+
+  // 繝・・繧ｿ蜿門ｾ鈴未謨ｰ
+  const fetchRecords = async () => {
+    setIsLoading(true);
+    try {
+      // 繝輔ぅ繝ｫ繧ｿ繝ｼ譚｡莉ｶ繧偵け繧ｨ繝ｪ繝代Λ繝｡繝ｼ繧ｿ縺ｫ螟画鋤
+      const params = new URLSearchParams();
+      if (filters.date) params.append("date", filters.date);
+
+      const res = await fetch(`/api/faxes?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+
+      const data = await res.json();
+      setRecords(data);
+    } catch (error) {
+      console.error(error);
+      alert("螻･豁ｴ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 蛻晏屓繝槭え繝ｳ繝域凾縺ｨ繝輔ぅ繝ｫ繧ｿ繝ｼ螟画峩譎ゅ↓螳溯｡・  useEffect(() => {
+    fetchRecords();
+  }, [filters.date]); // 譌･莉倥′螟峨ｏ縺｣縺溘ｉ蜀榊叙蠕・
+  // 隍・｣ｽ・亥・騾・ｼ峨ワ繝ｳ繝峨Λ
+  const handleDuplicate = async (id: number) => {
+    if (!confirm("縺薙・螻･豁ｴ繧定､・｣ｽ縺励※譁ｰ隕丈ｽ懈・縺励∪縺吶°・・)) return;
+
+    try {
+      const res = await fetch(`/api/faxes/${id}/duplicate`, { method: "PUT" });
+      if (!res.ok) throw new Error("Duplicate failed");
+
+      // 謌仙粥縺励◆繧我ｸ隕ｧ繧貞・蜿門ｾ励＠縺ｦ譛譁ｰ縺ｮ迥ｶ諷九↓縺吶ｋ
+      alert("隍・｣ｽ縺励∪縺励◆・・);
+      fetchRecords();
+    } catch (error) {
+      console.error(error);
+      alert("隍・｣ｽ縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
+    }
+  };
+
+  // 繧ｹ繝・・繧ｿ繧ｹ縺ｫ蠢懊§縺溘ヰ繝・ず濶ｲ
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "success": return <Badge className="bg-green-600">騾∽ｿ｡謌仙粥</Badge>;
+      case "failed": return <Badge className="bg-red-600">騾∽ｿ｡螟ｱ謨・/Badge>;
+      case "pending": return <Badge className="bg-yellow-500 text-black">騾∽ｿ｡蠕・■</Badge>;
+      default: return <Badge className="bg-gray-400">{status}</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold tracking-tight">騾∽ｿ｡螻･豁ｴ</h2>
+        <Button variant="outline" onClick={fetchRecords} disabled={isLoading}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+          譖ｴ譁ｰ
+        </Button>
+      </div>
+
+      {/* 繝輔ぅ繝ｫ繧ｿ繝ｼ繧ｨ繝ｪ繧｢ */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1 block text-gray-500">譌･莉倥〒邨槭ｊ霎ｼ縺ｿ</label>
+              <Input
+                type="date"
+                value={filters.date}
+                onChange={(e) => setFilters(prev => ({ ...prev, date: e.target.value }))}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1 block text-gray-500">繧ｭ繝ｼ繝ｯ繝ｼ繝画､懃ｴ｢・郁｡ｨ遉ｺ逕ｨ・・/label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="迚ｩ莉ｶ蜷阪・諡・ｽ楢・↑縺ｩ..."
+                  className="pl-8"
+                  value={filters.keyword}
+                  onChange={(e) => setFilters(prev => ({ ...prev, keyword: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 繝ｪ繧ｹ繝郁｡ｨ遉ｺ */}
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="text-center py-12 text-gray-500">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+            繝・・繧ｿ繧定ｪｭ縺ｿ霎ｼ繧薙〒縺・∪縺・..
+          </div>
+        ) : records.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 border-2 border-dashed rounded-lg">
+            螻･豁ｴ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ
+          </div>
+        ) : (
+          records
+            .filter(r =>
+              // 邁｡譏鍋噪縺ｪ繧ｯ繝ｩ繧､繧｢繝ｳ繝医し繧､繝峨ヵ繧｣繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ
+              !filters.keyword ||
+              JSON.stringify(r).toLowerCase().includes(filters.keyword.toLowerCase())
+            )
+            .map((fax) => (
+              <Card key={fax.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row justify-between gap-4">
+                    {/* 蟾ｦ蛛ｴ・壹Γ繧､繝ｳ諠・ｱ */}
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        {getStatusBadge(fax.status)}
+                        <span className="text-sm text-gray-500">
+                          {new Date(fax.sent_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-lg">{fax.property?.name || "迚ｩ莉ｶ蜷堺ｸ肴・"}</h3>
+                      <div className="text-sm text-gray-600">
+                        <p>螳帛・: {fax.company?.name || "莨夂､ｾ荳肴・"} (FAX: {fax.fax_number})</p>
+                        <p>諡・ｽ・ {fax.user?.name || "諡・ｽ楢・ｸ肴・"}</p>
+                      </div>
+                      {/* 隗｣骭譁ｹ豕輔↑縺ｩ縺ｮ繝｡繝｢陦ｨ遉ｺ */}
+                      {(fax.unlock_method || fax.notes) && (
+                        <div className="mt-3 bg-gray-50 p-3 rounded text-sm border">
+                          {fax.unlock_method && <p>泊 <strong>隗｣骭:</strong> {fax.unlock_method}</p>}
+                          {fax.notes && <p>統 <strong>繝｡繝｢:</strong> {fax.notes}</p>}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 蜿ｳ蛛ｴ・壹い繧ｯ繧ｷ繝ｧ繝ｳ繝懊ち繝ｳ */}
+                    <div className="flex items-center">
+                      <Button variant="outline" size="sm" onClick={() => handleDuplicate(fax.id)}>
+                        <Copy className="w-4 h-4 mr-2" />
+                        蜀埼√・隍・｣ｽ
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\obigae-screen.tsx
+----------------------------------------------------------------
+import { useEffect, useState, useRef } from "react";
+
+export function ObigaeScreen() {
+  const [loading, setLoading] = useState(false);
+  const [fileSelected, setFileSelected] = useState<File | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 諡・ｽ楢・ｸ隕ｧ繧貞叙蠕・
+  useEffect(() => {
+    fetch("/api/users").then(res => res.json()).then(data => setUsers(data));
+  }, []);
+
+  // 逕ｻ蜒剰ｪｭ縺ｿ霎ｼ縺ｿ蜃ｦ逅・
+  function handleFileChange(file: File) {
+    setFileSelected(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) setImageBase64(e.target.result as string);
+    };
+    reader.readAsDataURL(file);
+    setPdfUrl(null); // 繝輔ぃ繧､繝ｫ縺悟､峨ｏ縺｣縺溘ｉ繝励Ξ繝薙Η繝ｼ繝ｪ繧ｻ繝・ヨ
+  }
+
+  // 蟶ｯ譖ｿ縺・DF逕滓・螳溯｡・
+  async function handleGenerate() {
+    if (!imageBase64) return;
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/obigae", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: imageBase64,
+          user_id: selectedUserId
+        }),
+      });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        setPdfUrl(URL.createObjectURL(blob));
+      } else {
+        alert("逕滓・縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
+      }
+    } catch (e) {
+      alert("繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto pb-24 h-full flex flex-col">
+      <h1 className="text-2xl font-bold mb-6">蟶ｯ譖ｿ縺亥魂蛻ｷ繝・・繝ｫ</h1>
+      <p className="text-gray-600 mb-6">
+        邂｡逅・ｼ夂､ｾ縺ｮ蝗ｳ髱｢・医・繧､繧ｽ繧ｯ・峨ｒ繧｢繝・・繝ｭ繝ｼ繝峨＠縺ｦ縺上□縺輔＞縲・br />
+        荳矩Κ縺ｮ騾｣邨｡蜈域ュ蝣ｱ繧帝國縺励∬・遉ｾ縺ｮ蟶ｯ諠・ｱ縺ｫ蟾ｮ縺玲崛縺医◆PDF繧剃ｽ懈・縺励∪縺吶・
+      </p>
+
+      <div className="flex flex-col lg:flex-row gap-8 flex-1">
+        {/* 蟾ｦ蛛ｴ・壽桃菴懊ヱ繝阪Ν */}
+        <div className="w-full lg:w-1/3 space-y-6 bg-white p-6 rounded shadow h-fit">
+
+          {/* 繝輔ぃ繧､繝ｫ繧｢繝・・繝ｭ繝ｼ繝・*/}
+          <div
+            className="border-4 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const files = e.dataTransfer.files;
+              if (files && files.length > 0) {
+                handleFileChange(files[0]);
+              }
+            }}
+          >
+            <input
+              type="file"
+              hidden
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={(e) => {
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                  handleFileChange(files[0]);
+                }
+              }}
+            />
+            <div className="text-4xl mb-2">名・・/div>
+            {fileSelected ? (
+              <p className="font-bold text-blue-600">{fileSelected.name}</p>
+            ) : (
+              <p className="text-gray-500 font-bold">逕ｻ蜒上ｒ驕ｸ謚槭∪縺溘・繝峨Ο繝・・</p>
+            )}
+          </div>
+
+          {/* 諡・ｽ楢・∈謚・*/}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">蟶ｯ縺ｫ陦ｨ遉ｺ縺吶ｋ諡・ｽ楢・/label>
+            <select
+              className="w-full border p-2 rounded"
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+            >
+              <option value="">・域球蠖楢・↑縺暦ｼ・/option>
+              {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+
+          {/* 逕滓・繝懊ち繝ｳ */}
+          <button
+            onClick={handleGenerate}
+            disabled={!fileSelected || loading}
+            className={`w-full py-4 rounded font-bold text-white shadow-lg text-lg
+              ${!fileSelected || loading ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}
+          >
+            {loading ? "逕滓・荳ｭ..." : "笨ｨ 蟶ｯ譖ｿ縺・DF繧剃ｽ懈・"}
+          </button>
+        </div>
+
+        {/* 蜿ｳ蛛ｴ・壹・繝ｬ繝薙Η繝ｼ繧ｨ繝ｪ繧｢ */}
+        <div className="flex-1 bg-gray-200 rounded-lg p-4 min-h-[500px] flex items-center justify-center border">
+          {pdfUrl ? (
+            <iframe src={pdfUrl} className="w-full h-full min-h-[600px] bg-white shadow rounded" />
+          ) : (
+            <div className="text-gray-500 text-center">
+              <span className="text-4xl block mb-2">塘</span>
+              <p>縺薙％縺ｫ繝励Ξ繝薙Η繝ｼ縺瑚｡ｨ遉ｺ縺輔ｌ縺ｾ縺・/p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\pdf-screen.tsx
+----------------------------------------------------------------
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Loader2, Send, ArrowLeft, FileText } from "lucide-react";
+
+interface PdfScreenProps {
+  data: any;
+  onBack: () => void;
+  onComplete: () => void;
+}
+
+export function PdfScreen({ data, onBack, onComplete }: PdfScreenProps) {
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async () => {
+    // 1. 遒ｺ隱阪い繝ｩ繝ｼ繝・    if (!confirm("縺薙・蜀・ｮｹ縺ｧFAX繧帝∽ｿ｡縺励∪縺吶°・・)) return;
+
+    setLoading(true);
+    try {
+      console.log("騾∽ｿ｡髢句ｧ・ API繧貞他縺ｳ蜃ｺ縺励∪縺・..", data);
+
+      // 2. API縺ｸ騾∽ｿ｡ (/api/faxes 縺ｸPOST)
+      const res = await fetch("/api/faxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        console.log("騾∽ｿ｡謌仙粥・・);
+        alert("騾∽ｿ｡縺悟ｮ御ｺ・＠縺ｾ縺励◆・∝ｱ･豁ｴ逕ｻ髱｢縺ｸ遘ｻ蜍輔＠縺ｾ縺吶・);
+        onComplete(); // 隕ｪ繧ｳ繝ｳ繝昴・繝阪Φ繝医∈騾夂衍・亥ｱ･豁ｴ逕ｻ髱｢縺ｸ驕ｷ遘ｻ・・      } else {
+        const err = await res.json();
+        console.error("繧ｵ繝ｼ繝舌・繧ｨ繝ｩ繝ｼ:", err);
+        alert("騾∽ｿ｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲ゅし繝ｼ繝舌・繝ｭ繧ｰ繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・);
+      }
+    } catch (error) {
+      console.error("騾壻ｿ｡繧ｨ繝ｩ繝ｼ:", error);
+      alert("騾壻ｿ｡繧ｨ繝ｩ繝ｼ縺檎匱逕溘＠縺ｾ縺励◆縲・);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" /> 菫ｮ豁｣縺ｫ謌ｻ繧・        </Button>
+        <h2 className="text-2xl font-bold">騾∽ｿ｡繝励Ξ繝薙Η繝ｼ</h2>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* 蟾ｦ蛛ｴ・壼・蜉帶ュ蝣ｱ縺ｮ遒ｺ隱・*/}
+        <Card className="p-6 space-y-4 h-fit">
+          <h3 className="font-bold border-b pb-2 text-lg">螳帛・繝ｻ迚ｩ莉ｶ諠・ｱ</h3>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs text-gray-500 font-medium">螳帛・・育ｮ｡逅・ｼ夂､ｾ・・/label>
+              <p className="font-medium">{data.company_name || "譛ｪ蜈･蜉・}</p>
+            </div>
+
+            <div className="bg-blue-50 p-3 rounded-md border border-blue-100">
+              <label className="text-xs text-blue-600 font-bold">FAX逡ｪ蜿ｷ</label>
+              <p className="font-bold text-xl text-blue-700">{data.fax_number || "譛ｪ蜈･蜉・}</p>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-500 font-medium">迚ｩ莉ｶ蜷・/label>
+              <p className="font-medium">{data.property_name || "譛ｪ蜈･蜉・}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-gray-500 font-medium">驛ｨ螻狗分蜿ｷ</label>
+                <p>{data.room_number || "-"}</p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-medium">蜀・ｦ区律譎・/label>
+                <p>{data.visit_date ? `${data.visit_date} ${data.visit_time || ''}` : "譛ｪ螳・}</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* 蜿ｳ蛛ｴ・啀DF繝励Ξ繝薙Η繝ｼ・域闘莨ｼ・・*/}
+        <div className="space-y-4">
+          <Card className="p-0 overflow-hidden border-2 border-dashed bg-gray-100 min-h-[400px] flex flex-col items-center justify-center text-gray-400">
+            <FileText className="h-16 w-16 mb-2 opacity-50" />
+            <p className="font-medium">PDF繝励Ξ繝薙Η繝ｼ</p>
+            <p className="text-xs mt-2 max-w-xs text-center">
+              騾∽ｿ｡繝懊ち繝ｳ繧呈款縺吶→縲∝・蜉帶ュ蝣ｱ繧貞・縺ｫ<br />豁｣蠑上↑蜀・ｦ倶ｾ晞ｼ譖ｸPDF縺檎函謌舌＆繧後∪縺吶・            </p>
+            <div className="mt-6 bg-white p-4 shadow-sm text-xs border w-3/4">
+              <p><strong>To:</strong> {data.company_name} 蠕｡荳ｭ</p>
+              <p><strong>FAX:</strong> {data.fax_number}</p>
+              <p className="mt-2 text-center font-bold text-base border-b pb-2">蜀・ｦ倶ｾ晞ｼ譖ｸ</p>
+              <p className="mt-2">諡晏蕪縲∬ｲｴ遉ｾ縺ｾ縺吶∪縺吶＃貂・・・縺薙→縺ｨ...</p>
+            </div>
+          </Card>
+
+          <Button
+            size="lg"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-6 shadow-lg transition-all hover:scale-[1.01]"
+            onClick={handleSend}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 騾∽ｿ｡荳ｭ...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-5 w-5" /> 遒ｺ螳壹＠縺ｦFAX繧帝∽ｿ｡縺吶ｋ
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\preview-screen.tsx
+----------------------------------------------------------------
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
+
+interface PreviewScreenProps {
+  data: any;
+  onBack: () => void;
+  onSendComplete: (result: any) => void;
+}
+
+export function PreviewScreen({ data, onBack, onSendComplete }: PreviewScreenProps) {
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      // API騾｣謳ｺ縺ｮ繝｢繝・け・域悽譚･縺ｯ /api/send-fax 縺ｸPOST・・
+      // const res = await fetch("/api/send-fax", { ... });
+
+      console.log("Sending FAX...", data);
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // 2遘貞ｾ・ｩ・
+
+      onSendComplete({
+        success: true,
+        sentAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Sending failed:", error);
+      alert("騾∽ｿ｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆縲・);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 animate-in zoom-in-95 duration-500">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-2">騾∽ｿ｡繝励Ξ繝薙Η繝ｼ</h2>
+        <p className="text-gray-500">蜀・ｮｹ繧堤｢ｺ隱阪＠縺ｦFAX騾∽ｿ｡繧貞ｮ溯｡後＠縺ｦ縺上□縺輔＞</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* 蟾ｦ蛛ｴ・夐∽ｿ｡螳帛・諠・ｱ */}
+        <Card className="md:col-span-1 h-fit">
+          <CardHeader>
+            <CardTitle className="text-lg">騾∽ｿ｡螳帛・</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div>
+              <p className="text-gray-500 text-xs">邂｡逅・ｼ夂､ｾ</p>
+              <p className="font-semibold">{data.company_name || "・域悴蜈･蜉幢ｼ・}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs">FAX逡ｪ蜿ｷ</p>
+              <p className="font-semibold text-lg">{data.fax_number}</p>
+            </div>
+            <div className="border-t pt-4">
+              <p className="text-gray-500 text-xs">迚ｩ莉ｶ蜷・/p>
+              <p className="font-medium">{data.property_name}</p>
+              <p className="font-medium">{data.room_number}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 蜿ｳ蛛ｴ・啀DF繝励Ξ繝薙Η繝ｼ繧､繝｡繝ｼ繧ｸ・医Δ繝・け・・*/}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg flex justify-between items-center">
+              <span>蜀・ｦ倶ｾ晞ｼ譖ｸ繧､繝｡繝ｼ繧ｸ</span>
+              <span className="text-xs font-normal text-gray-400">A4繧ｵ繧､繧ｺ</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center bg-gray-100 min-h-[400px] rounded-md p-4">
+            <div className="bg-white shadow-lg w-full max-w-sm aspect-[1/1.414] p-8 flex flex-col text-xs text-gray-800 border">
+              <div className="text-center border-b-2 border-black pb-2 mb-4">
+                <h1 className="text-xl font-bold">蜀・ｦ倶ｾ晞ｼ譖ｸ</h1>
+              </div>
+              <div className="mb-4">
+                <p className="font-bold text-lg mb-1">{data.company_name} 蠕｡荳ｭ</p>
+                <p>FAX: {data.fax_number}</p>
+              </div>
+              <div className="border border-gray-300 p-2 mb-4 bg-gray-50">
+                <p className="mb-1">莉･荳九・迚ｩ莉ｶ縺ｮ蜀・ｦ九ｒ縺企｡倥＞縺・◆縺励∪縺吶・/p>
+                <div className="mt-2 pl-2 border-l-2 border-gray-300">
+                  <p><span className="font-bold">迚ｩ莉ｶ蜷・</span> {data.property_name}</p>
+                  <p><span className="font-bold">蜿ｷ螳､:</span> {data.room_number}</p>
+                  <p><span className="font-bold">菴乗園:</span> {data.address}</p>
+                </div>
+                <div className="mt-2 pt-2 border-t border-dashed">
+                  <p><span className="font-bold">蟶梧悍譌･:</span> {data.visit_date || "譛ｪ螳・}</p>
+                  <p><span className="font-bold">蟶梧悍譎る俣:</span> {data.visit_time || "譛ｪ螳・}</p>
+                </div>
+              </div>
+              <div className="mt-auto pt-4 border-t border-gray-300">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <p className="font-bold">譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣</p>
+                    <p>諡・ｽ・ 螻ｱ逕ｰ 螟ｪ驛・/p>
+                    <p>TEL: 03-1111-2222</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex gap-4 max-w-xl mx-auto pt-4">
+        <Button variant="outline" onClick={onBack} className="flex-1" disabled={sending}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          菫ｮ豁｣縺吶ｋ
+        </Button>
+        <Button
+          onClick={handleSend}
+          className="flex-1 bg-blue-600 hover:bg-blue-700"
+          disabled={sending}
+        >
+          {sending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              騾∽ｿ｡荳ｭ...
+            </>
+          ) : (
+            <>
+              <Send className="mr-2 h-4 w-4" />
+              FAX繧帝∽ｿ｡縺吶ｋ
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\settings-screen.tsx
+----------------------------------------------------------------
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Users, Building, Settings as SettingsIcon, Save, Loader2, Plus } from "lucide-react";
+
+export function SettingsScreen() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 譁ｰ隕乗球蠖楢・畑繝輔か繝ｼ繝
+  const [newUser, setNewUser] = useState({ name: "", email: "" });
+
+  // 莨夂､ｾ諠・ｱ邱ｨ髮・畑繝輔か繝ｼ繝
+  const [companyForm, setCompanyForm] = useState({ name: "", address: "", phone: "" });
+
+  // 繝・・繧ｿ蜿門ｾ・  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        setData(data);
+        if (data.company) {
+          setCompanyForm(data.company);
+        }
+        setLoading(false);
+      })
+      .catch((err) => console.error(err));
+  }, []);
+
+  // 諡・ｽ楢・ｿｽ蜉
+  const handleAddUser = async () => {
+    if (!newUser.name || !newUser.email) return;
+
+    const res = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newUser),
+    });
+
+    if (res.ok) {
+      const addedUser = await res.json();
+      setData((prev: any) => ({ ...prev, users: [...prev.users, addedUser] }));
+      setNewUser({ name: "", email: "" });
+      alert("諡・ｽ楢・ｒ霑ｽ蜉縺励∪縺励◆");
+    }
+  };
+
+  // 莨夂､ｾ諠・ｱ譖ｴ譁ｰ
+  const handleUpdateCompany = async () => {
+    if (!data?.company?.id) return;
+
+    const res = await fetch(`/api/companies/${data.company.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(companyForm),
+    });
+
+    if (res.ok) {
+      alert("莨夂､ｾ諠・ｱ繧呈峩譁ｰ縺励∪縺励◆");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64 text-gray-500">
+        <Loader2 className="w-8 h-8 animate-spin mr-2" />
+        險ｭ螳壹ｒ隱ｭ縺ｿ霎ｼ繧薙〒縺・∪縺・..
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <h2 className="text-2xl font-bold tracking-tight">險ｭ螳壹・邂｡逅・/h2>
+
+      {/* 1. 諡・ｽ楢・ｮ｡逅・*/}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            諡・ｽ楢・ｮ｡逅・          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            {data?.users.map((user: any) => (
+              <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                <div>
+                  <div className="font-medium">{user.name}</div>
+                  <div className="text-sm text-gray-500">{user.email}</div>
+                </div>
+                <span className="text-xs bg-gray-200 px-2 py-1 rounded">蝟ｶ讌ｭ諡・ｽ・/span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 items-end pt-2 border-t">
+            <div className="grid gap-2 flex-1">
+              <Label>譁ｰ縺励＞諡・ｽ楢・ｒ霑ｽ蜉</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="豌丞錐"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                />
+                <Input
+                  placeholder="繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                />
+              </div>
+            </div>
+            <Button onClick={handleAddUser}>
+              <Plus className="w-4 h-4 mr-2" />
+              霑ｽ蜉
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 2. 閾ｪ遉ｾ諠・ｱ險ｭ螳・*/}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building className="w-5 h-5" />
+            閾ｪ遉ｾ諠・ｱ險ｭ螳・          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>莨夂､ｾ蜷・/Label>
+              <Input
+                value={companyForm.name}
+                onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>菴乗園</Label>
+              <Input
+                value={companyForm.address}
+                onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>莉｣陦ｨ髮ｻ隧ｱ逡ｪ蜿ｷ</Label>
+              <Input
+                value={companyForm.phone}
+                onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
+              />
+            </div>
+          </div>
+          <Button onClick={handleUpdateCompany} className="mt-2">
+            <Save className="w-4 h-4 mr-2" />
+            螟画峩繧剃ｿ晏ｭ・          </Button>
+        </CardContent>
+      </Card>
+
+      {/* 3. 蛻ｩ逕ｨ迥ｶ豕√・繧ｷ繧ｹ繝・Β諠・ｱ */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SettingsIcon className="w-5 h-5" />
+            蛻ｩ逕ｨ迥ｶ豕√・繧ｷ繧ｹ繝・Β
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="p-3 bg-gray-50 rounded">
+              <dt className="text-gray-500 mb-1">邏ｯ險磯∽ｿ｡莉ｶ謨ｰ</dt>
+              <dd className="font-bold text-lg">{data?.usage.total_faxes_sent} 莉ｶ</dd>
+            </div>
+            <div className="p-3 bg-gray-50 rounded">
+              <dt className="text-gray-500 mb-1">譛邨る∽ｿ｡譌･譎・/dt>
+              <dd className="font-bold text-lg">
+                {data?.usage.last_sent_at ? new Date(data.usage.last_sent_at).toLocaleDateString() : "-"}
+              </dd>
+            </div>
+            <div className="p-3 bg-gray-50 rounded">
+              <dt className="text-gray-500 mb-1">繧ｿ繧､繝繧ｾ繝ｼ繝ｳ</dt>
+              <dd>{data?.system.timezone}</dd>
+            </div>
+            <div className="p-3 bg-gray-50 rounded">
+              <dt className="text-gray-500 mb-1">PDF繝輔か繝ｼ繝槭ャ繝・/dt>
+              <dd>{data?.system.pdf_format}</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\screens\upload-screen.tsx
+----------------------------------------------------------------
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Upload, FileText, Printer, ArrowRight, Loader2 } from "lucide-react";
+import Tesseract from "tesseract.js";
+
+// 蜷榊絢繝・・繧ｿ縺ｮ繝｢繝・け
+const businessCards = [
+  { id: "1", name: "螻ｱ逕ｰ 螟ｪ驛・, company: "譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣", phone: "03-1111-2222" },
+  { id: "2", name: "菴占陸 闃ｱ蟄・, company: "譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣", phone: "03-1111-2222" },
+];
+
+interface UploadScreenProps {
+  onAnalyzeComplete: () => void;
+}
+
+export function UploadScreen({ onAnalyzeComplete }: UploadScreenProps) {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState(0);
+
+  const [formData, setFormData] = useState({
+    fax_number: "",
+    company_name: "",
+    property_name: "",
+    room_number: "",
+    notes: ""
+  });
+
+  const [selectedCard, setSelectedCard] = useState("1");
+
+  // FAX逡ｪ蜿ｷ謚ｽ蜃ｺ繝ｭ繧ｸ繝・け・井ｿｮ豁｣貂医∩・・  const extractFaxNumber = (text: string): string => {
+    // 繝代ち繝ｼ繝ｳ1: "FAX" 繝ｩ繝吶Ν莉倥″縺ｮ逡ｪ蜿ｷ
+    const faxRegex = /(?:FAX|fax|Fax|F|・ｦ・｡・ｸ|・ｦ)[\s:・咯*(\d{2,4}[-\s]\d{2,4}[-\s]\d{3,4})/g;
+    const faxMatch = faxRegex.exec(text);
+
+    // faxMatch縺ｯ驟榊・縺ｧ縺吶ＧaxMatch[1] 縺ｧ繧ｭ繝｣繝励メ繝｣繧ｰ繝ｫ繝ｼ繝暦ｼ育分蜿ｷ驛ｨ蛻・ｼ峨↓繧｢繧ｯ繧ｻ繧ｹ縺励∪縺吶・    if (faxMatch && faxMatch[1]) {
+      return faxMatch[1].replace(/\s/g, "-");
+    }
+
+    // 繝代ち繝ｼ繝ｳ2: 繝ｩ繝吶Ν縺ｪ縺励・髮ｻ隧ｱ逡ｪ蜿ｷ蠖｢蠑・    const phoneRegex = /(\d{2,4}[-]\d{2,4}[-]\d{3,4})/;
+    const phoneMatch = text.match(phoneRegex);
+
+    // 笘・％縺薙′菫ｮ豁｣邂・園縺ｧ縺吮・
+    // phoneMatch 縺ｯ驟榊・縺ｪ縺ｮ縺ｧ縲・繧偵▽縺代※縲・逡ｪ逶ｮ縺ｮ譁・ｭ怜・縲阪ｒ蜿悶ｊ蜃ｺ縺励∪縺・    if (phoneMatch) {
+      return phoneMatch[0];
+    }
+
+    return "";
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // FileList 縺ｯ .item(0) 縺ｧ蜿門ｾ励＠縺ｾ縺・    if (e.target.files && e.target.files.length > 0) {
+      const selectedFile = e.target.files.item(0);
+      if (!selectedFile) return;
+
+      setFile(selectedFile);
+      setIsAnalyzing(true);
+      setProgress(0);
+      setFormData(prev => ({ ...prev, fax_number: "" }));
+
+      try {
+        const result = await Tesseract.recognize(
+          selectedFile,
+          'jpn',
+          {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                setProgress(Math.floor(m.progress * 100));
+              }
+            }
+          }
+        );
+
+        const text = result.data.text;
+        console.log("OCR Result:", text);
+
+        const detectedFax = extractFaxNumber(text);
+
+        setFormData({
+          fax_number: detectedFax || "逡ｪ蜿ｷ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縺ｧ縺励◆",
+          company_name: "",
+          property_name: "",
+          room_number: "",
+          notes: ""
+        });
+
+      } catch (error) {
+        console.error("OCR Error:", error);
+        alert("逕ｻ蜒上・隱ｭ縺ｿ蜿悶ｊ縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }
+  };
+
+  const handlePreview = async () => {
+    if (!formData.fax_number) return alert("繝励Ξ繝薙Η繝ｼ繧剃ｽ懈・縺吶ｋ縺ｫ縺ｯFAX逡ｪ蜿ｷ縺悟ｿ・ｦ√〒縺・);
+    const selectedCardData = businessCards.find(c => c.id === selectedCard);
+
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch("/api/faxes/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          sender_card: selectedCardData || { name: "諡・ｽ楢・, company: "閾ｪ遉ｾ", phone: "" }
+        }),
+      });
+      if (!response.ok) throw new Error("PDF generation failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error(error);
+      alert("繝励Ξ繝薙Η繝ｼ逕滓・縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleSendFax = async () => {
+    setIsAnalyzing(true);
+    try {
+      const res = await fetch("/api/faxes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          user_id: 1,
+          company_id: 1,
+          property_id: 1
+        }),
+      });
+      if (res.ok) {
+        alert("騾∽ｿ｡螳御ｺ・＠縺ｾ縺励◆・・);
+        onAnalyzeComplete();
+      } else {
+        alert("騾∽ｿ｡縺ｫ螟ｱ謨励＠縺ｾ縺励◆");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("騾∽ｿ｡繧ｨ繝ｩ繝ｼ");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* 繧｢繝・・繝ｭ繝ｼ繝峨お繝ｪ繧｢ */}
+      <Card className="border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
+        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+            <Upload className="w-8 h-8 text-blue-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+            繝槭う繧ｽ繧ｯ逕ｻ蜒上ｒ繧｢繝・・繝ｭ繝ｼ繝・          </h3>
+          <p className="text-sm text-gray-500 mb-6 max-w-sm">
+            Tesseract OCR繧ｨ繝ｳ繧ｸ繝ｳ縺ｧ逕ｻ蜒上ｒ隗｣譫舌＠縺ｾ縺吶・br />
+            譌･譛ｬ隱槭・闍ｱ隱槭・FAX逡ｪ蜿ｷ繧定・蜍墓歓蜃ｺ縺励∪縺吶・          </p>
+          <div className="relative">
+            <Input
+              type="file"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onChange={handleFileChange}
+              accept="image/*"
+            />
+            <Button variant="outline">
+              繝輔ぃ繧､繝ｫ繧帝∈謚・            </Button>
+          </div>
+          {file && (
+            <div className="mt-4 flex items-center text-sm text-blue-600 font-medium">
+              <FileText className="w-4 h-4 mr-2" />
+              {file.name}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 隗｣譫蝉ｸｭ繝ｭ繝ｼ繝・ぅ繝ｳ繧ｰ */}
+      {isAnalyzing && !formData.fax_number && (
+        <div className="flex flex-col items-center justify-center py-8 text-blue-600 space-y-2">
+          <div className="flex items-center">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            OCR隗｣譫蝉ｸｭ... {progress}%
+          </div>
+          <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-400">蛻晏屓縺ｯ蟄ｦ鄙偵ョ繝ｼ繧ｿ縺ｮDL縺ｫ譎る俣縺後°縺九ｊ縺ｾ縺・/p>
+        </div>
+      )}
+
+      {/* 隗｣譫千ｵ先棡繝輔か繝ｼ繝 */}
+      {(formData.fax_number || (!isAnalyzing && file && !formData.fax_number)) && (
+        <div className="bg-white p-6 rounded-xl shadow-sm border space-y-6 animate-in fade-in">
+          <div className="flex items-center gap-2 border-b pb-4">
+            <FileText className="w-5 h-5 text-blue-600" />
+            <h3 className="font-bold text-lg">謚ｽ蜃ｺ邨先棡縺ｮ遒ｺ隱阪・邱ｨ髮・/h3>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="flex justify-between">
+                FAX逡ｪ蜿ｷ
+                <span className="text-xs text-gray-500 font-normal">窶ｻ逕ｻ蜒上°繧芽・蜍墓歓蜃ｺ</span>
+              </Label>
+              <Input
+                value={formData.fax_number}
+                onChange={(e) => setFormData({ ...formData, fax_number: e.target.value })}
+                className={formData.fax_number.includes("隕九▽縺九ｊ縺ｾ縺帙ｓ") ? "border-red-300 text-red-600" : "font-bold"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>邂｡逅・ｼ夂､ｾ蜷・/Label>
+              <Input
+                value={formData.company_name}
+                onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                placeholder="OCR譛ｪ蟇ｾ蠢懶ｼ域焔蜈･蜉幢ｼ・
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>迚ｩ莉ｶ蜷・/Label>
+              <Input
+                value={formData.property_name}
+                onChange={(e) => setFormData({ ...formData, property_name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>驛ｨ螻狗分蜿ｷ</Label>
+              <Input
+                value={formData.room_number}
+                onChange={(e) => setFormData({ ...formData, room_number: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>諡・ｽ楢・錐蛻ｺ・磯∽ｿ｡蜈・ュ蝣ｱ・・/Label>
+              <Select value={selectedCard} onValueChange={setSelectedCard}>
+                <SelectTrigger>
+                  <SelectValue placeholder="蜷榊絢繧帝∈謚・ />
+                </SelectTrigger>
+                <SelectContent>
+                  {businessCards.map(card => (
+                    <SelectItem key={card.id} value={card.id}>
+                      {card.name} / {card.company}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>蛯呵・・繝｡繝｢</Label>
+              <Input
+                placeholder="騾∽ｻ倡憾縺ｸ縺ｮ霑ｽ險倥ｄ繝｡繝｢縺後≠繧後・蜈･蜉・
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-4 border-t">
+            <Button variant="outline" className="flex-1" onClick={handlePreview}>
+              <Printer className="w-4 h-4 mr-2" />
+              蜊ｰ蛻ｷ繝励Ξ繝薙Η繝ｼ
+            </Button>
+            <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleSendFax} disabled={isAnalyzing}>
+              {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+              FAX騾∽ｿ｡縺吶ｋ
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\badge.tsx
+----------------------------------------------------------------
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {}
+
+function Badge({ className, ...props }: BadgeProps) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-gray-900 text-white hover:bg-gray-900/80",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Badge }
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\button.tsx
+----------------------------------------------------------------
+
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+    {
+        variants: {
+            variant: {
+                default: "bg-primary text-primary-foreground hover:bg-primary/90",
+                destructive:
+                    "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                outline:
+                    "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+                secondary:
+                    "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                ghost: "hover:bg-accent hover:text-accent-foreground",
+                link: "text-primary underline-offset-4 hover:underline",
+            },
+            size: {
+                default: "h-10 px-4 py-2",
+                sm: "h-9 rounded-md px-3",
+                lg: "h-11 rounded-md px-8",
+                icon: "h-10 w-10",
+            },
+        },
+        defaultVariants: {
+            variant: "default",
+            size: "default",
+        },
+    }
+)
+
+export interface ButtonProps
+    extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+    asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+    ({ className, variant, size, asChild = false, ...props }, ref) => {
+        const Comp = asChild ? Slot : "button"
+        return (
+            <Comp
+                className={cn(buttonVariants({ variant, size, className }))}
+                ref={ref}
+                {...props}
+            />
+        )
+    }
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\card.tsx
+----------------------------------------------------------------
+
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+const Card = React.forwardRef<
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+    <div
+        ref={ref}
+        className={cn(
+            "rounded-lg border bg-card text-card-foreground shadow-sm",
+            className
+        )}
+        {...props}
+    />
+))
+Card.displayName = "Card"
+
+const CardHeader = React.forwardRef<
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+    <div
+        ref={ref}
+        className={cn("flex flex-col space-y-1.5 p-6", className)}
+        {...props}
+    />
+))
+CardHeader.displayName = "CardHeader"
+
+const CardTitle = React.forwardRef<
+    HTMLParagraphElement,
+    React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+    <h3
+        ref={ref}
+        className={cn(
+            "text-2xl font-semibold leading-none tracking-tight",
+            className
+        )}
+        {...props}
+    />
+))
+CardTitle.displayName = "CardTitle"
+
+const CardDescription = React.forwardRef<
+    HTMLParagraphElement,
+    React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+    <p
+        ref={ref}
+        className={cn("text-sm text-muted-foreground", className)}
+        {...props}
+    />
+))
+CardDescription.displayName = "CardDescription"
+
+const CardContent = React.forwardRef<
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
+
+const CardFooter = React.forwardRef<
+    HTMLDivElement,
+    React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+    <div
+        ref={ref}
+        className={cn("flex items-center p-6 pt-0", className)}
+        {...props}
+    />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\input.tsx
+----------------------------------------------------------------
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> { }
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Input.displayName = "Input"
+
+export { Input }
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\label.tsx
+----------------------------------------------------------------
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+const Label = React.forwardRef<
+    HTMLLabelElement,
+    React.LabelHTMLAttributes<HTMLLabelElement>
+>(({ className, ...props }, ref) => (
+    <label
+        ref={ref}
+        className={cn(
+            "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+            className
+        )}
+        {...props}
+    />
+))
+Label.displayName = "Label"
+
+export { Label }
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\select.tsx
+----------------------------------------------------------------
+import * as React from "react"
+import { Check, ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const SelectContext = React.createContext<{
+  value: string
+  onValueChange: (value: string) => void
+  open: boolean
+  setOpen: (open: boolean) => void
+} | null>(null)
+
+export const Select = ({ value, onValueChange, children }: any) => {
+  const [open, setOpen] = React.useState(false)
+  return (
+    <SelectContext.Provider value={{ value, onValueChange, open, setOpen }}>
+      <div className="relative">{children}</div>
+    </SelectContext.Provider>
+  )
+}
+
+export const SelectTrigger = ({ className, children }: any) => {
+  const context = React.useContext(SelectContext)
+  return (
+    <button
+      type="button"
+      onClick={() => context?.setOpen(!context.open)}
+      className={cn(
+        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+    >
+      {children}
+      <ChevronDown className="h-4 w-4 opacity-50" />
+    </button>
+  )
+}
+
+export const SelectValue = ({ placeholder }: any) => {
+  const context = React.useContext(SelectContext)
+  // 蜊倡ｴ泌喧縺ｮ縺溘ａ縲∬｡ｨ遉ｺ蛟､縺ｮ隗｣豎ｺ繝ｭ繧ｸ繝・け縺ｯ邁｡逡･蛹悶＠縺ｦ縺・∪縺・
+  return <span className="block truncate">{context?.value || placeholder}</span>
+}
+
+export const SelectContent = ({ className, children }: any) => {
+  const context = React.useContext(SelectContext)
+  if (!context?.open) return null
+  return (
+    <div
+      className={cn(
+        "absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80 w-full mt-1 bg-white",
+        className
+      )}
+    >
+      <div className="p-1">{children}</div>
+    </div>
+  )
+}
+
+export const SelectItem = ({ value, children, className }: any) => {
+  const context = React.useContext(SelectContext)
+  const isSelected = context?.value === value
+  return (
+    <div
+      onClick={() => {
+        context?.onValueChange(value)
+        context?.setOpen(false)
+      }}
+      className={cn(
+        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer hover:bg-slate-100",
+        className
+      )}
+    >
+      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+        {isSelected && <Check className="h-4 w-4" />}
+      </span>
+      <span className="truncate">{children}</span>
+    </div>
+  )
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\table.tsx
+----------------------------------------------------------------
+import * as React from "react"
+
+const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(({ className, ...props }, ref) => (
+  <div className="w-full overflow-auto">
+    <table ref={ref} className={`w-full caption-bottom text-sm ${className || ""}`} {...props} />
+  </div>
+))
+Table.displayName = "Table"
+
+const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(({ className, ...props }, ref) => (
+  <thead ref={ref} className={`[&_tr]:border-b ${className || ""}`} {...props} />
+))
+TableHeader.displayName = "TableHeader"
+
+const TableBody = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(({ className, ...props }, ref) => (
+  <tbody ref={ref} className={`[&_tr:last-child]:border-0 ${className || ""}`} {...props} />
+))
+TableBody.displayName = "TableBody"
+
+const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(({ className, ...props }, ref) => (
+  <tr ref={ref} className={`border-b transition-colors hover:bg-slate-100/50 data-[state=selected]:bg-slate-100 ${className || ""}`} {...props} />
+))
+TableRow.displayName = "TableRow"
+
+const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(({ className, ...props }, ref) => (
+  <th ref={ref} className={`h-12 px-4 text-left align-middle font-medium text-slate-500 [&:has([role=checkbox])]:pr-0 ${className || ""}`} {...props} />
+))
+TableHead.displayName = "TableHead"
+
+const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(({ className, ...props }, ref) => (
+  <td ref={ref} className={`p-4 align-middle [&:has([role=checkbox])]:pr-0 ${className || ""}`} {...props} />
+))
+TableCell.displayName = "TableCell"
+
+export { Table, TableHeader, TableBody, TableHead, TableRow, TableCell }
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\tabs.tsx
+----------------------------------------------------------------
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+const TabsContext = React.createContext<{value: string; onValueChange: (v: string) => void} | null>(null);
+
+export function Tabs({ defaultValue, value, onValueChange, children, className }: any) {
+  const [stateValue, setStateValue] = React.useState(defaultValue);
+  const currentValue = value !== undefined ? value : stateValue;
+  const changeHandler = onValueChange || setStateValue;
+
+  return (
+    <TabsContext.Provider value={{ value: currentValue, onValueChange: changeHandler }}>
+      <div className={className}>{children}</div>
+    </TabsContext.Provider>
+  )
+}
+
+export function TabsList({ className, children }: any) {
+  return (
+    <div className={cn("inline-flex h-10 items-center justify-center rounded-md bg-slate-100 p-1 text-slate-500", className)}>
+      {children}
+    </div>
+  )
+}
+
+export function TabsTrigger({ value, children, className }: any) {
+  const context = React.useContext(TabsContext);
+  const isActive = context?.value === value;
+  return (
+    <button
+      type="button"
+      onClick={() => context?.onValueChange(value)}
+      className={cn(
+        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+        isActive ? "bg-white text-slate-950 shadow-sm" : "hover:bg-slate-200 hover:text-slate-900",
+        className
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function TabsContent({ value, children, className }: any) {
+  const context = React.useContext(TabsContext);
+  if (context?.value !== value) return null;
+  return <div className={cn("mt-2 ring-offset-white focus-visible:outline-none animate-in fade-in duration-300", className)}>{children}</div>
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\components\ui\textarea.tsx
+----------------------------------------------------------------
+
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+export interface TextareaProps
+    extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { }
+
+const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+    ({ className, ...props }, ref) => {
+        return (
+            <textarea
+                className={cn(
+                    "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                    className
+                )}
+                ref={ref}
+                {...props}
+            />
+        )
+    }
+)
+Textarea.displayName = "Textarea"
+
+export { Textarea }
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\prisma\schema.prisma
+----------------------------------------------------------------
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 諡・ｽ楢・ユ繝ｼ繝悶Ν
+model User {
+  id       Int      @id @default(autoincrement())
+  name     String
+  email    String
+  role     String   // "agent", "admin"縺ｪ縺ｩ
+  faxes    Fax[]
+}
+
+// 邂｡逅・ｼ夂､ｾ繝・・繝悶Ν
+model Company {
+  id         Int        @id @default(autoincrement())
+  name       String
+  phone      String?
+  address    String?
+  faxes      Fax[]
+  properties Property[]
+}
+
+// 迚ｩ莉ｶ繝・・繝悶Ν
+model Property {
+  id          Int      @id @default(autoincrement())
+  name        String
+  address     String
+  room_number String?
+  company_id  Int
+  company     Company  @relation(fields: [company_id], references: [id])
+  faxes       Fax[]
+}
+
+// 騾∽ｿ｡螻･豁ｴ繝・・繝悶Ν
+model Fax {
+  id            Int      @id @default(autoincrement())
+  property_id   Int
+  company_id    Int
+  user_id       Int
+  fax_number    String
+  sent_at       DateTime
+  status        String   // "success", "failed", "pending"
+  unlock_method String?  // 髮ｻ隧ｱ縺ｧ遒ｺ隱阪＠縺溯ｧ｣骭譁ｹ豕・
+  notes         String?  // 豕ｨ諢丈ｺ矩・Γ繝｢
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  user      User     @relation(fields: [user_id], references: [id])
+  property  Property @relation(fields: [property_id], references: [id])
+  company   Company  @relation(fields: [company_id], references: [id])
+}
+// 繧ｷ繧ｹ繝・Β險ｭ螳壹・閾ｪ遉ｾ諠・ｱ・医す繝ｳ繧ｰ繝ｫ繝医Φ諠ｳ螳夲ｼ・
+model Settings {
+  id          Int     @id @default(autoincrement())
+  company_name String?
+  company_address String?
+  company_phone String?
+  company_fax String?
+  
+  fax_success_notify Boolean @default(true)
+  fax_failure_notify Boolean @default(true)
+  
+  timezone    String  @default("Asia/Tokyo")
+  language    String  @default("ja")
+  pdf_format  String  @default("A4")
+}
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\prisma\seed.ts
+----------------------------------------------------------------
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("験 繧ｷ繝ｼ繝峨ョ繝ｼ繧ｿ縺ｮ謚募・繧帝幕蟋九＠縺ｾ縺・..");
+
+  // 1. 諡・ｽ楢・・菴懈・
+  const user1 = await prisma.user.upsert({
+    where: { email: "taro@example.com" },
+    update: {},
+    create: { name: "螻ｱ逕ｰ 螟ｪ驛・, email: "taro@example.com", role: "agent" },
+  });
+  const user2 = await prisma.user.upsert({
+    where: { email: "hanako@example.com" },
+    update: {},
+    create: { name: "菴占陸 闃ｱ蟄・, email: "hanako@example.com", role: "agent" },
+  });
+
+  // 2. 邂｡逅・ｼ夂､ｾ縺ｮ菴懈・
+  const company1 = await prisma.company.create({
+    data: {
+      name: "譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν邂｡逅・,
+      phone: "03-1111-2222",
+      address: "譚ｱ莠ｬ驛ｽ譁ｰ螳ｿ蛹ｺ隘ｿ譁ｰ螳ｿ1-1-1",
+    },
+  });
+  const company2 = await prisma.company.create({
+    data: {
+      name: "ABC荳榊虚逕｣繧ｽ繝ｪ繝･繝ｼ繧ｷ繝ｧ繝ｳ",
+      phone: "03-3333-4444",
+      address: "譚ｱ莠ｬ驛ｽ貂玖ｰｷ蛹ｺ貂玖ｰｷ2-2-2",
+    },
+  });
+
+  // 3. 迚ｩ莉ｶ縺ｮ菴懈・
+  const property1 = await prisma.property.create({
+    data: {
+      name: "繧ｰ繝ｩ繝ｳ繝峨Γ繧ｾ繝ｳ貂玖ｰｷ",
+      address: "譚ｱ莠ｬ驛ｽ貂玖ｰｷ蛹ｺ貂玖ｰｷ1-1-1",
+      room_number: "101",
+      company_id: company1.id,
+    },
+  });
+  const property2 = await prisma.property.create({
+    data: {
+      name: "蜈ｭ譛ｬ譛ｨ繝偵Ν繧ｺ繝ｬ繧ｸ繝・Φ繧ｹ",
+      address: "譚ｱ莠ｬ驛ｽ貂ｯ蛹ｺ蜈ｭ譛ｬ譛ｨ3-3-3",
+      room_number: "202",
+      company_id: company2.id,
+    },
+  });
+
+  // 4. FAX騾∽ｿ｡螻･豁ｴ縺ｮ菴懈・・医ム繝溘・繝・・繧ｿ・・
+  await prisma.fax.createMany({
+    data: [
+      {
+        property_id: property1.id,
+        company_id: company1.id,
+        user_id: user1.id,
+        fax_number: "03-5555-1111",
+        sent_at: new Date("2025-12-18T09:00:00Z"),
+        status: "success",
+        unlock_method: "邂｡逅・ｮ､縺ｧ證苓ｨｼ逡ｪ蜿ｷ繧貞女縺大叙繧・,
+        notes: "蜊亥燕荳ｭ縺ｫ骰ｵ繧貞女縺大叙繧翫らｮ｡逅・ｺｺ縺御ｸ榊惠縺ｮ蝣ｴ蜷医・髮ｻ隧ｱ縺吶ｋ縺薙→縲・,
+      },
+      {
+        property_id: property2.id,
+        company_id: company2.id,
+        user_id: user2.id,
+        fax_number: "03-5555-2222",
+        sent_at: new Date("2025-12-19T14:30:00Z"),
+        status: "failed",
+        unlock_method: "髮ｻ隧ｱ縺ｧ證苓ｨｼ逡ｪ蜿ｷ繧堤｢ｺ隱・,
+        notes: "FAX騾∽ｿ｡螟ｱ謨励∝・騾∝ｿ・ｦ・,
+      },
+      {
+        property_id: property1.id,
+        company_id: company1.id,
+        user_id: user2.id,
+        fax_number: "03-5555-3333",
+        sent_at: new Date("2025-12-20T11:15:00Z"),
+        status: "success",
+        unlock_method: "迴ｾ蝨ｰ繧ｭ繝ｼ繝懊ャ繧ｯ繧ｹ・育分蜿ｷ・・122・・,
+        notes: "蜊亥ｾ後・蜀・ｦ倶ｺ亥ｮ壹ゅ♀螳｢讒倥ｒ縺疲｡亥・縲・,
+      },
+    ],
+  });
+
+  // 5. 險ｭ螳壹・蛻晄悄蛟､
+  // 笘・ｿｮ豁｣: 繧ｫ繝ｩ繝蜷阪ｒDB螳夂ｾｩ・・ax_success_notify遲会ｼ峨↓蜷医ｏ縺帙∝ｭ伜惠縺励↑縺・・岼繧貞炎髯､
+  await prisma.settings.create({
+    data: {
+      fax_success_notify: true,  // 菫ｮ豁｣蜑・ fax_success
+      fax_failure_notify: true,  // 菫ｮ豁｣蜑・ fax_failure
+      
+      // 繧ｨ繝ｩ繝ｼ繝ｭ繧ｰ縺ｮ縲窟vailable options縲阪↓蝓ｺ縺･縺阪∽ｼ夂､ｾ諠・ｱ繧４ettings繝・・繝悶Ν縺ｫ蜷ｫ縺ｾ繧後※縺・ｋ蝣ｴ蜷医・縺薙％縺ｧ險ｭ螳・
+      company_name: "譬ｪ蠑丈ｼ夂､ｾ繧ｵ繝ｳ繝励Ν荳榊虚逕｣",
+      company_address: "譚ｱ莠ｬ驛ｽ貂玖ｰｷ蛹ｺ貂玖ｰｷ1-2-3",
+      company_phone: "03-1234-5678",
+      company_fax: "03-1234-9999",
+
+      // 窶ｻ莉･荳九・鬆・岼縺ｯ繧ｨ繝ｩ繝ｼ繝ｭ繧ｰ縺ｮ縲窟vailable options縲阪↓蜷ｫ縺ｾ繧後※縺・↑縺九▲縺溘◆繧√・
+      // 迴ｾ蝨ｨ縺ｮschema.prisma縺ｫ縺ｯ蟄伜惠縺励↑縺・庄閭ｽ諤ｧ縺後≠繧翫∪縺吶ゆｸ譌ｦ繧ｳ繝｡繝ｳ繝医い繧ｦ繝医＠縺ｾ縺吶・
+      // system_updates: false,
+      // timezone: "Asia/Tokyo",
+      // language: "ja",
+      // pdf_format: "A4",
+    },
+  });
+
+  console.log("笨・繧ｷ繝ｼ繝峨ョ繝ｼ繧ｿ縺ｮ謚募・縺悟ｮ御ｺ・＠縺ｾ縺励◆・・);
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+
+----------------------------------------------------------------
+File: C:\Users\FMV\real-estate-fax-mvp\package.json
+----------------------------------------------------------------
+{
+  "name": "my-v0-project",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@prisma/client": "5.19.1",
+    "@radix-ui/react-accordion": "1.2.2",
+    "@radix-ui/react-alert-dialog": "1.1.4",
+    "@radix-ui/react-aspect-ratio": "1.1.1",
+    "@radix-ui/react-avatar": "1.1.2",
+    "@radix-ui/react-checkbox": "1.1.3",
+    "@radix-ui/react-collapsible": "1.1.2",
+    "@radix-ui/react-context-menu": "2.2.4",
+    "@radix-ui/react-dialog": "1.1.4",
+    "@radix-ui/react-dropdown-menu": "2.1.4",
+    "@radix-ui/react-hover-card": "1.1.4",
+    "@radix-ui/react-label": "2.1.1",
+    "@radix-ui/react-menubar": "1.1.4",
+    "@radix-ui/react-navigation-menu": "1.2.3",
+    "@radix-ui/react-popover": "1.1.4",
+    "@radix-ui/react-progress": "1.1.1",
+    "@radix-ui/react-radio-group": "1.2.2",
+    "@radix-ui/react-scroll-area": "1.2.2",
+    "@radix-ui/react-select": "2.1.4",
+    "@radix-ui/react-separator": "1.1.1",
+    "@radix-ui/react-slider": "1.2.2",
+    "@radix-ui/react-slot": "1.1.1",
+    "@radix-ui/react-switch": "1.1.2",
+    "@radix-ui/react-tabs": "1.1.2",
+    "@radix-ui/react-toast": "1.2.4",
+    "@radix-ui/react-toggle": "1.1.1",
+    "@radix-ui/react-toggle-group": "1.1.1",
+    "@radix-ui/react-tooltip": "1.1.6",
+    "@vercel/analytics": "1.3.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "1.0.4",
+    "date-fns": "4.1.0",
+    "embla-carousel-react": "8.5.1",
+    "input-otp": "1.4.1",
+    "lucide-react": "^0.454.0",
+    "next": "16.0.10",
+    "next-themes": "^0.4.6",
+    "pdfjs-dist": "^3.11.174",
+    "prisma": "5.19.1",
+    "puppeteer": "^24.34.0",
+    "react": "19.2.0",
+    "react-day-picker": "9.8.0",
+    "react-dom": "19.2.0",
+    "react-hook-form": "^7.60.0",
+    "react-resizable-panels": "^2.1.7",
+    "recharts": "2.15.4",
+    "sonner": "^1.7.4",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7",
+    "tesseract.js": "^7.0.0",
+    "vaul": "^1.1.2",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.9",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "tw-animate-css": "1.3.3",
+    "typescript": "^5"
+  }
+}
+

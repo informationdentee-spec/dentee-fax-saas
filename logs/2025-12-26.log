@@ -1,0 +1,3 @@
+{"timestamp":"2025-12-26T10:24:04.947Z","level":"INFO","message":"FAX sent (Fax ID: 71)","context":{"fax_number":"","purpose":"visit_request","status":"success"}}
+{"timestamp":"2025-12-26T16:16:08.417Z","level":"INFO","message":"FAX sent (Fax ID: 72)","context":{"fax_number":"03","purpose":"visit_request","status":"success"}}
+{"timestamp":"2025-12-26T16:16:08.832Z","level":"INFO","message":"FAX sent (Fax ID: 73)","context":{"fax_number":"11","purpose":"visit_request","status":"success"}}
