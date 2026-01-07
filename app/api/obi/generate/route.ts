@@ -136,7 +136,8 @@ export async function POST(request: NextRequest) {
     await browser.close();
 
     // Base64エンコード
-    const base64Image = `data:image/png;base64,${screenshot.toString('base64')}`;
+    const buffer = Buffer.from(screenshot);
+    const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
 
     return NextResponse.json({ obi_image: base64Image });
 
