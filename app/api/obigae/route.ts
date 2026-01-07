@@ -160,7 +160,8 @@ export async function POST(request: NextRequest) {
     });
     await browser.close();
 
-    return new NextResponse(pdfBuffer, {
+    const buffer = Buffer.from(pdfBuffer);
+    return new NextResponse(buffer, {
       headers: { 'Content-Type': 'application/pdf' },
     });
 
