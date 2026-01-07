@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
     await browser.close();
 
     // Base64エンコード
-    const base64Image = `data:image/png;base64,${screenshot.toString('base64')}`;
+    const buffer = Buffer.from(screenshot);
+    const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
 
     return NextResponse.json({ image: base64Image, html });
   } catch (error) {
@@ -76,7 +77,8 @@ export async function PUT(request: NextRequest) {
     await browser.close();
 
     // Base64エンコード
-    const base64Image = `data:image/png;base64,${screenshot.toString('base64')}`;
+    const buffer = Buffer.from(screenshot);
+    const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
 
     return NextResponse.json({ image: base64Image });
   } catch (error) {
