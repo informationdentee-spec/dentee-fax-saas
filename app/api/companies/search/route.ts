@@ -36,9 +36,10 @@ export async function GET(request: NextRequest) {
     const pastFaxes = await prisma.fax.findMany({
       where: {
         OR: [
-          { company_name: { contains: query } },
+          { company: { name: { contains: query } } },
           { fax_number: { contains: query } },
           { company_phone: { contains: query } },
+          { company: { phone: { contains: query } } },
         ],
         sent_at: {
           gte: thirtyDaysAgo
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
     }>();
 
     pastFaxes.forEach(fax => {
-      const companyName = fax.company_name || fax.company?.name || "";
+      const companyName = fax.company?.name || "";
       if (!companyName) return;
 
       const key = companyName.toLowerCase();
@@ -74,9 +75,9 @@ export async function GET(request: NextRequest) {
           name: companyName,
           fax: fax.fax_number || fax.company?.fax || null,
           phone: fax.company_phone || fax.company?.phone || null,
-          properties: fax.property_name ? [{
-            name: fax.property_name,
-            room_number: fax.room_number || null
+          properties: fax.property?.name ? [{
+            name: fax.property.name,
+            room_number: fax.property.room_number || null
           }] : [],
           lastSentAt: fax.sent_at,
           count: 1
@@ -88,12 +89,12 @@ export async function GET(request: NextRequest) {
           existing.lastSentAt = fax.sent_at;
         }
         // 物件情報を追加（重複排除）
-        if (fax.property_name) {
-          const propExists = existing.properties.some(p => p.name === fax.property_name);
+        if (fax.property?.name) {
+          const propExists = existing.properties.some(p => p.name === fax.property?.name);
           if (!propExists) {
             existing.properties.push({
-              name: fax.property_name,
-              room_number: fax.room_number || null
+              name: fax.property.name,
+              room_number: fax.property.room_number || null
             });
           }
         }
